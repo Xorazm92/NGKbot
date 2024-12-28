@@ -1,0 +1,23 @@
+{
+  "name": "bot_folder",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "fs": "^0.0.1-security",
+    "grammy": "^1.33.0",
+    "imagekit": "^6.0.0",
+    "mongoose": "^8.8.4"
+  },
+  "description": ""
+}
