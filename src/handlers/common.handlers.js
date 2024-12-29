@@ -3,6 +3,8 @@ import bot from '../config/bot.js'
 import axios from 'axios';
 import fs from 'fs';
 import { client } from '../config/telegram.client.mjs';
+import { translations } from '../config/translations.js';
+import { getTranslation, handleError, validateUserId, sleep, sanitizeInput } from '../utils/common.js';
 import { 
     sendHomeMenu, 
     saveLang,
@@ -20,6 +22,7 @@ const complaintSteps = {};
 export const handleInterestingMaterials = async (ctx, lang) => {
     try {
         console.log('Qiziqarli ma\'lumotlar bo\'limiga o\'tish');
+        const userId = validateUserId(ctx);
 
         const materials = [
             {
@@ -29,36 +32,22 @@ export const handleInterestingMaterials = async (ctx, lang) => {
             }
         ];
 
-        await ctx.reply(
-            lang === "UZB" 
-                ? "📚 Qiziqarli ma'lumotlarni yuborish boshlanmoqda..."
-                : "📚 Начинается отправка интересных материалов..."
-        );
+        await ctx.reply(getTranslation(lang, 'INTERESTING_MATERIALS', 'START'));
 
         for (const material of materials) {
             try {
                 await ctx.replyWithDocument(material.url, {
-                    caption: lang === "UZB"
-                        ? `📚 ${material.description}\n\nFayl: ${material.filename}`
-                        : `📚 ${material.description}\n\nФайл: ${material.filename}`,
+                    caption: `📚 ${material.description}\n\nFayl: ${material.filename}`,
                     filename: material.filename
                 });
+                await sleep(1000); // Prevent flooding
             } catch (error) {
                 console.error(`Error sending material ${material.filename}:`, error);
-                await ctx.reply(
-                    lang === "UZB"
-                        ? `❌ Faylni yuborishda xatolik yuz berdi: ${material.filename}`
-                        : `❌ Ошибка при отправке файла: ${material.filename}`
-                );
+                await handleError(ctx, error, lang);
             }
         }
     } catch (error) {
-        console.error('Error in Qiziqarli ma\'lumotlar handler:', error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -66,6 +55,8 @@ export const handleInterestingMaterials = async (ctx, lang) => {
 export const handleVideoTutorials = async (ctx, lang) => {
     try {
         console.log('Video qo\'llanmalar bo\'limiga o\'tish');
+        const userId = validateUserId(ctx);
+
         const materials = [
             {
                 filename: "ijro.gov.uz.mp4",
@@ -79,40 +70,25 @@ export const handleVideoTutorials = async (ctx, lang) => {
             }
         ];
 
-        await ctx.reply(
-            lang === "UZB" 
-                ? "📹 Video qo'llanmalarni yuborish boshlanmoqda..."
-                : "📹 Начинается отправка видео-руководств..."
-        );
+        await ctx.reply(getTranslation(lang, 'VIDEO_TUTORIALS', 'START'));
 
         for (const material of materials) {
             try {
                 // Videoni fayl sifatida yuborish
                 await ctx.replyWithDocument(material.url, {
-                    caption: lang === "UZB"
-                        ? `📹 ${material.description}`
-                        : `📹 ${material.description}`,
+                    caption: `📹 ${material.description}`,
                     filename: material.filename
                 });
                 
                 // Har bir video orasida kutish
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await sleep(1000);
             } catch (error) {
                 console.error(`Error sending video ${material.filename}:`, error);
-                await ctx.reply(
-                    lang === "UZB"
-                        ? `❌ Videoni yuborishda xatolik: ${material.filename}`
-                        : `❌ Ошибка при отправке видео: ${material.filename}`
-                );
+                await handleError(ctx, error, lang);
             }
         }
     } catch (error) {
-        console.error('Error in Video tutorials handler:', error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -121,6 +97,8 @@ export const handleVideoTutorials = async (ctx, lang) => {
 export const handleSamplefarms = async (ctx, lang) => {
     try {
         console.log('Namunaliy blanklar bo\'limiga o\'tish');
+        const userId = validateUserId(ctx);
+
         const farms = [
             {
                 filename: "blanklar.zip",
@@ -141,36 +119,22 @@ export const handleSamplefarms = async (ctx, lang) => {
            
         ];
 
-        await ctx.reply(
-            lang === "UZB" 
-                ? "📝 Namunaliy blanklarni yuborish boshlanmoqda..."
-                : "📝 Начинается отправка образцов бланков..."
-        );
+        await ctx.reply(getTranslation(lang, 'SAMPLE_FARMS', 'START'));
 
         for (const farm of farms) {
             try {
                 await ctx.replyWithDocument(farm.url, {
-                    caption: lang === "UZB"
-                        ? `📝 ${farm.description}\n\nFayl: ${farm.filename}`
-                        : `📝 ${farm.description}\n\nФайл: ${farm.filename}`,
+                    caption: `📝 ${farm.description}\n\nFayl: ${farm.filename}`,
                     filename: farm.filename
                 });
+                await sleep(1000); // Prevent flooding
             } catch (error) {
                 console.error(`Error sending farm ${farm.filename}:`, error);
-                await ctx.reply(
-                    lang === "UZB"
-                        ? `❌ Blankni yuborishda xatolik: ${farm.filename}`
-                        : `❌ Ошибка при отправке бланка: ${farm.filename}`
-                );
+                await handleError(ctx, error, lang);
             }
         }
     } catch (error) {
-        console.error('Error in Sample farms handler:', error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -178,6 +142,8 @@ export const handleSamplefarms = async (ctx, lang) => {
 export const handleRequiredDocuments = async (ctx, lang) => {
     try {
         console.log('Kerakli hujjatlar bo\'limiga o\'tish');
+        const userId = validateUserId(ctx);
+
         const documents = [
             {
                 filename: "Mehnat_kodeksi.pdf",
@@ -191,36 +157,22 @@ export const handleRequiredDocuments = async (ctx, lang) => {
             }
         ];
 
-        await ctx.reply(
-            lang === "UZB" 
-                ? "📄 Kerakli hujjatlarni yuborish boshlanmoqda..."
-                : "📄 Начинается отправка необходимых документов..."
-        );
+        await ctx.reply(getTranslation(lang, 'REQUIRED_DOCUMENTS', 'START'));
 
         for (const doc of documents) {
             try {
                 await ctx.replyWithDocument(doc.url, {
-                    caption: lang === "UZB"
-                        ? `📄 ${doc.description}\n\nFayl: ${doc.filename}`
-                        : `📄 ${doc.description}\n\nФайл: ${doc.filename}`,
+                    caption: `📄 ${doc.description}\n\nFayl: ${doc.filename}`,
                     filename: doc.filename
                 });
+                await sleep(1000); // Prevent flooding
             } catch (error) {
                 console.error(`Error sending document ${doc.filename}:`, error);
-                await ctx.reply(
-                    lang === "UZB"
-                        ? `❌ Hujjatni yuborishda xatolik: ${doc.filename}`
-                        : `❌ Ошибка при отправке документа: ${doc.filename}`
-                );
+                await handleError(ctx, error, lang);
             }
         }
     } catch (error) {
-        console.error('Error in Required documents handler:', error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -230,31 +182,26 @@ export const handleRequiredDocuments = async (ctx, lang) => {
 // Call markaz uchun handler
 export const handleCallCenter = async (ctx, lang) => {
     try {
-        const message = lang === "UZB"
-            ? "📞 Call markaz raqami: +998 71 237 91 21\n\nIsh vaqti: 09:00 - 18:00"
-            : "📞 Номер Call центра: +998 71 237 91 21\n\nРабочее время: 09:00 - 18:00";
+        const userId = validateUserId(ctx);
+        const message = getTranslation(lang, 'CALL_CENTER', 'MESSAGE');
 
         await ctx.reply(message, {
             reply_markup: {
                 keyboard: [
-                    [lang === "UZB" ? "⬅️ Orqaga" : "⬅️ Назад"]
+                    [getTranslation(lang, 'CALL_CENTER', 'BACK')]
                 ],
                 resize_keyboard: true
             }
         });
     } catch (error) {
-        console.error('Error in Call center handler:', error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
 // Yangi xabarlarni olish uchun handler
 export const handleNewMessages = async (ctx, lang) => {
     try {
+        const userId = validateUserId(ctx);
         // Kanaldan xabar olish
         const messages = await client.getHistory("@uzrailways_uz", { limit: 1 });
 
@@ -306,25 +253,12 @@ export const handleNewMessages = async (ctx, lang) => {
             }
 
             // Tasdiqlash xabari
-            await ctx.reply(
-                lang === "UZB"
-                    ? "✅ Oxirgi xabar yuborildi"
-                    : "✅ Последнее сообщение отправлено"
-            );
+            await ctx.reply(getTranslation(lang, 'NEW_MESSAGES', 'SUCCESS'));
         } else {
-            await ctx.reply(
-                lang === "UZB"
-                    ? "❌ Kanalda xabarlar mavjud emas"
-                    : "❌ В канале нет сообщений"
-            );
+            await ctx.reply(getTranslation(lang, 'NEW_MESSAGES', 'NO_MESSAGES'));
         }
     } catch (error) {
-        console.error("Error in handleNewMessages:", error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi"
-                : "❌ Произошла ошибка"
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -333,26 +267,18 @@ export const handleAllNews = async (ctx, lang) => {
     console.log("==");
     
     try {
-        const newsUrl = lang === "UZB" 
-            ? "https://railway.uz/uz/informatsionnaya_sluzhba/novosti/"
-            : "https://railway.uz/ru/informatsionnaya_sluzhba/novosti/";
+        const userId = validateUserId(ctx);
+        const newsUrl = getTranslation(lang, 'ALL_NEWS', 'URL');
 
         await ctx.reply(
-            lang === "UZB"
-                ? `<a href="${newsUrl}">O'zbekiston Temir Yo'llari rasmiy yangiliklar sahifasi</a>`
-                : `<a href="${newsUrl}">Официальная страница новостей Узбекистон Темир Йуллари</a>`,
+            `<a href="${newsUrl}">${getTranslation(lang, 'ALL_NEWS', 'MESSAGE')}</a>`,
             {
                 parse_mode: "HTML",
                 disable_web_page_preview: false
             }
         );
     } catch (error) {
-        console.error("Error in handleAllNews:", error);
-        await ctx.reply(
-            lang === "UZB"
-                ? "❌ Xatolik yuz berdi"
-                : "❌ Произошла ошибка"
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -369,8 +295,7 @@ export const handleStart = async (ctx) => {
             await selectLang(ctx);
         }
     } catch (error) {
-        console.error('Start komandasida xatolik:', error);
-        await ctx.reply("❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.\n❌ Произошла ошибка. Пожалуйста, попробуйте еще раз.");
+        await handleError(ctx, error, 'UZB');
     }
 };
 
@@ -380,22 +305,17 @@ export const handleMenu = async (ctx, lang) => {
         console.log('Menyu bo\'limi tanlandi');
         const message = ctx.message.text;
         
-        if (message === "👥 Foydalanuvchilar" || message === "👥 Пользователи") {
+        if (message === getTranslation(lang, 'MENU', 'USERS')) {
             await userSection(ctx, lang);
-        } else if (message === "📝 Murojaatlar" || message === "📝 Обращения") {
+        } else if (message === getTranslation(lang, 'MENU', 'REQUESTS')) {
             await requestsSection(ctx, lang);
-        } else if (message === "📚 Adabiyotlar" || message === "📚 Литература") {
+        } else if (message === getTranslation(lang, 'MENU', 'LITERATURE')) {
             await literatureSection(ctx, lang);
-        } else if (message === "📨 Xabarlar" || message === "📨 Сообщения") {
+        } else if (message === getTranslation(lang, 'MENU', 'MESSAGES')) {
             await messagesSection(ctx, lang);
         }
     } catch (error) {
-        console.error('Menyu bo\'limini tanlashda xatolik:', error);
-        await ctx.reply(
-            lang === "UZB" 
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз."
-        );
+        await handleError(ctx, error, lang);
     }
 };
 
@@ -405,14 +325,13 @@ export const handleLanguage = async (ctx) => {
         console.log('Til tanlash tugmasi bosildi');
         const message = ctx.message.text;
         
-        if (message === "🇺🇿 O'zbek tili") {
+        if (message === getTranslation('UZB', 'LANGUAGE', 'UZB')) {
             await saveLang(ctx, "UZB");
-        } else if (message === "🇷🇺 Русский") {
+        } else if (message === getTranslation('UZB', 'LANGUAGE', 'RUS')) {
             await saveLang(ctx, "RUS");
         }
     } catch (error) {
-        console.error('Til tanlashda xatolik:', error);
-        await ctx.reply("❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.\n❌ Произошла ошибка. Пожалуйста, попробуйте еще раз.");
+        await handleError(ctx, error, 'UZB');
     }
 };
 
@@ -429,133 +348,18 @@ export const handleBack = async (ctx, lang) => {
             await sendHomeMenu(ctx, lang);
         }
     } catch (error) {
-        console.error('Orqaga qaytishda xatolik:', error);
-
-            lang === "UZB" 
-                ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-                : "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз."
-        
+        await handleError(ctx, error, lang);
     }
 };
 
-// // Shikoyat va takliflar bo'limi uchun funksiya
-// export const handleComplaint = async (ctx, lang) => {
-//     try {
-//         const user_id = ctx?.from?.id;
-//         const user = await User.findOne({ user_id });
-
-//         if (!user) {
-//             await ctx.reply(
-//                 lang === "UZB" 
-//                     ? "Botga \"/start\" tugmasi orqali qayta kiring"
-//                     : "Перезайдите в бот через кнопку \"/start\""
-//             );
-//             return;
-//         }
-
-//         // Foydalanuvchi holatini yangilash
-//         user.state = 'waiting_complaint';
-//         await user.save();
-
-//         await ctx.reply(
-//             lang === "UZB" 
-//                 ? "📝 Iltimos, quyidagi ma'lumotlarni kiriting:\n\n" +
-//                   "1. F.I.SH. (to'liq)\n" +
-//                   "2. Manzilingiz\n" +
-//                   "3. Telefon raqamingiz\n" +
-//                   "4. Murojaatingiz mazmuni\n\n" +
-//                   "Har bir punktni yangi qatordan yozing."
-//                 : "📝 Пожалуйста, введите следующую информацию:\n\n" +
-//                   "1. Ф.И.О. (полностью)\n" +
-//                   "2. Ваш адрес\n" +
-//                   "3. Номер телефона\n" +
-//                   "4. Содержание обращения\n\n" +
-//                   "Каждый пункт пишите с новой строки."
-//         );
-
-//     } catch (error) {
-//         console.error('Shikoyat formasi xatoligi:', error);
-//         await ctx.reply(
-//             lang === "UZB" 
-//                 ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-//                 : "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз."
-//         );
-//     }
-// };
-// // Shikoyat ma'lumotlarini qayta ishlash
-// export const processComplaint = async (ctx, lang) => {
-//     try {
-//         const user_id = ctx?.from?.id;
-//         const message = ctx.message.text;
-        
-//         // Xabarni qatorlarga ajratish
-//         const lines = message.split('\n').filter(line => line.trim());
-        
-//         if (lines.length < 4) {
-//             await ctx.reply(
-//                 lang === "UZB"
-//                     ? "❌ Iltimos, barcha ma'lumotlarni to'liq kiriting."
-//                     : "❌ Пожалуйста, введите всю информацию полностью."
-//             );
-//             return;
-//         }
-
-//         // Ma'lumotlarni formatlash
-//         const complaintData = {
-//             fullName: lines[0],
-//             address: lines[1],
-//             contact: lines[2],
-//             content: lines.slice(3).join('\n')
-//         };
-
-//         // Adminga xabar yuborish
-//         const adminMessage = 
-//             lang === "UZB"
-//                 ? `📨 Yangi murojaat:\n\n` +
-//                   `👤 F.I.SH.: ${complaintData.fullName}\n` +
-//                   `📍 Manzil: ${complaintData.address}\n` +
-//                   `📞 Aloqa: ${complaintData.contact}\n` +
-//                   `📝 Murojaat mazmuni:\n${complaintData.content}`
-//                 : `📨 Новое обращение:\n\n` +
-//                   `👤 Ф.И.О.: ${complaintData.fullName}\n` +
-//                   `📍 Адрес: ${complaintData.address}\n` +
-//                   `📞 Контакт: ${complaintData.contact}\n` +
-//                   `📝 Содержание обращения:\n${complaintData.content}`;
-
-//         await ctx.api.sendMessage(process.env.ADMIN_ID, adminMessage);
-
-//         // Foydalanuvchiga tasdiqlash xabari
-//         await ctx.reply(
-//             lang === "UZB"
-//                 ? "✅ Murojaatingiz qabul qilindi va adminlarga yuborildi.\nTez orada ko'rib chiqiladi."
-//                 : "✅ Ваше обращение принято и отправлено администраторам.\nОно будет рассмотрено в ближайшее время."
-//         );
-
-//         // Foydalanuvchi holatini tozalash
-//         const user = await User.findOne({ user_id });
-//         user.state = null;
-//         await user.save();
-
-//     } catch (error) {
-//         console.error('Shikoyatni qayta ishlashda xatolik:', error);
-//         await ctx.reply(
-//             lang === "UZB"
-//                 ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-//                 : "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз."
-//         );
-//     }
-// };
-
-
+// Shikoyat va takliflar bo'limi uchun funksiya
 export const startComplaintFlow = async (ctx, lang) => {
     const userId = ctx.from.id;
     const user = await User.findOne({ user_id: userId });
 
     if (!user) {
         await ctx.reply(
-            lang === "UZB" 
-                ? "Botga \"/start\" tugmasi orqali qayta kiring"
-                : "Перезайдите в бот через кнопку \"/start\"",
+            getTranslation('UZB', 'COMPLAINT', 'START_ERROR'),
             { parse_mode: "HTML" }
         );
         return;
@@ -564,15 +368,13 @@ export const startComplaintFlow = async (ctx, lang) => {
     complaintSteps[userId] = { step: "fullName", lang };
 
     const keyboard = new Keyboard()
-        .text(lang === "UZB" ? "👤 F.I.SH. kiriting" : "👤 Ввести Ф.И.О.")
+        .text(getTranslation(lang, 'COMPLAINT', 'FULL_NAME'))
         .row()
         .oneTime()
         .resized();
 
     await ctx.reply(
-        lang === "UZB"
-            ? "<b>Shikoyat va takliflar uchun ariza berish</b>\n\nQuyidagi ma'lumotlarni ketma-ketlikda kiriting:"
-            : "<b>Подача заявки для жалоб и предложений</b>\n\nВведите следующую информацию в указанном порядке:",
+        getTranslation(lang, 'COMPLAINT', 'START_MESSAGE'),
         { 
             parse_mode: "HTML",
             reply_markup: keyboard 
@@ -600,11 +402,9 @@ export const handleComplaintMessage = async (ctx) => {
 
     switch (step) {
         case "fullName":
-            if (userMessage === (lang === "UZB" ? "👤 F.I.SH. kiriting" : "👤 Ввести Ф.И.О.")) {
+            if (userMessage === getTranslation(lang, 'COMPLAINT', 'FULL_NAME')) {
                 await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>👤 F.I.SH.ni to'liq kiriting:</b>"
-                        : "<b>👤 Введите Ф.И.О. полностью:</b>",
+                    getTranslation(lang, 'COMPLAINT', 'FULL_NAME_INPUT'),
                     { parse_mode: "HTML" }
                 );
                 complaintSteps[userId].step = "waitingFullName";
@@ -615,24 +415,18 @@ export const handleComplaintMessage = async (ctx) => {
             complaintSteps[userId].fullName = userMessage;
             complaintSteps[userId].step = "address";
             await ctx.reply(
-                lang === "UZB"
-                    ? "<b>📍 Manzilingizni kiriting:</b>"
-                    : "<b>📍 Введите ваш адрес:</b>",
+                getTranslation(lang, 'COMPLAINT', 'ADDRESS_INPUT'),
                 { 
                     parse_mode: "HTML",
-                    reply_markup: createKeyboard(
-                        lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес"
-                    )
+                    reply_markup: createKeyboard(getTranslation(lang, 'COMPLAINT', 'ADDRESS'))
                 }
             );
             break;
 
         case "address":
-            if (userMessage === (lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес")) {
+            if (userMessage === getTranslation(lang, 'COMPLAINT', 'ADDRESS')) {
                 await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>📍 Manzilingizni yozing:</b>"
-                        : "<b>📍 Напишите ваш адрес:</b>",
+                    getTranslation(lang, 'COMPLAINT', 'ADDRESS_INPUT'),
                     { parse_mode: "HTML" }
                 );
                 complaintSteps[userId].step = "waitingAddress";
@@ -643,24 +437,18 @@ export const handleComplaintMessage = async (ctx) => {
             complaintSteps[userId].address = userMessage;
             complaintSteps[userId].step = "phone";
             await ctx.reply(
-                lang === "UZB"
-                    ? "<b>📞 Telefon raqamingizni kiriting:</b>"
-                    : "<b>📞 Введите ваш номер телефона:</b>",
+                getTranslation(lang, 'COMPLAINT', 'PHONE_INPUT'),
                 { 
                     parse_mode: "HTML",
-                    reply_markup: createKeyboard(
-                        lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона"
-                    )
+                    reply_markup: createKeyboard(getTranslation(lang, 'COMPLAINT', 'PHONE'))
                 }
             );
             break;
 
         case "phone":
-            if (userMessage === (lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона")) {
+            if (userMessage === getTranslation(lang, 'COMPLAINT', 'PHONE')) {
                 await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>📞 Telefon raqamingizni yozing:</b>"
-                        : "<b>📞 Напишите ваш номер телефона:</b>",
+                    getTranslation(lang, 'COMPLAINT', 'PHONE_INPUT'),
                     { parse_mode: "HTML" }
                 );
                 complaintSteps[userId].step = "waitingPhone";
@@ -671,24 +459,18 @@ export const handleComplaintMessage = async (ctx) => {
             complaintSteps[userId].phone = userMessage;
             complaintSteps[userId].step = "content";
             await ctx.reply(
-                lang === "UZB"
-                    ? "<b>📝 Murojaatingiz mazmunini kiriting:</b>"
-                    : "<b>📝 Введите содержание обращения:</b>",
+                getTranslation(lang, 'COMPLAINT', 'CONTENT_INPUT'),
                 { 
                     parse_mode: "HTML",
-                    reply_markup: createKeyboard(
-                        lang === "UZB" ? "📝 Murojaat matnini kiriting" : "📝 Ввести текст обращения"
-                    )
+                    reply_markup: createKeyboard(getTranslation(lang, 'COMPLAINT', 'CONTENT'))
                 }
             );
             break;
 
         case "content":
-            if (userMessage === (lang === "UZB" ? "📝 Murojaat matnini kiriting" : "📝 Ввести текст обращения")) {
+            if (userMessage === getTranslation(lang, 'COMPLAINT', 'CONTENT')) {
                 await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>📝 Murojaatingiz matnini yozing:</b>"
-                        : "<b>📝 Напишите текст вашего обращения:</b>",
+                    getTranslation(lang, 'COMPLAINT', 'CONTENT_INPUT'),
                     { parse_mode: "HTML" }
                 );
                 complaintSteps[userId].step = "waitingContent";
@@ -700,26 +482,14 @@ export const handleComplaintMessage = async (ctx) => {
             complaintSteps[userId].step = "confirm";
 
             const confirmKeyboard = new Keyboard()
-                .text(lang === "UZB" ? "✅ Ha" : "✅ Да")
-                .text(lang === "UZB" ? "❌ Yo'q" : "❌ Нет")
+                .text(getTranslation(lang, 'COMPLAINT', 'CONFIRM_YES'))
+                .text(getTranslation(lang, 'COMPLAINT', 'CONFIRM_NO'))
                 .row()
                 .oneTime()
                 .resized();
 
             await ctx.reply(
-                lang === "UZB"
-                    ? `<b>Shikoyat ma'lumotlari:</b>\n\n` +
-                      `👤 F.I.SH.: ${complaintSteps[userId].fullName}\n` +
-                      `📍 Manzil: ${complaintSteps[userId].address}\n` +
-                      `📞 Aloqa: ${complaintSteps[userId].phone}\n` +
-                      `📝 Murojaat mazmuni:\n${complaintSteps[userId].content}\n\n` +
-                      `<b>Ma'lumotlar to'g'rimi?</b>`
-                    : `<b>Данные жалобы:</b>\n\n` +
-                      `👤 Ф.И.О.: ${complaintSteps[userId].fullName}\n` +
-                      `📍 Адрес: ${complaintSteps[userId].address}\n` +
-                      `📞 Контакт: ${complaintSteps[userId].phone}\n` +
-                      `📝 Содержание обращения:\n${complaintSteps[userId].content}\n\n` +
-                      `<b>Данные верны?</b>`,
+                getTranslation(lang, 'COMPLAINT', 'CONFIRM_MESSAGE'),
                 { 
                     parse_mode: "HTML",
                     reply_markup: confirmKeyboard 
@@ -728,19 +498,14 @@ export const handleComplaintMessage = async (ctx) => {
             break;
 
         case "confirm":
-            if (userMessage === (lang === "UZB" ? "✅ Ha" : "✅ Да")) {
+            if (userMessage === getTranslation(lang, 'COMPLAINT', 'CONFIRM_YES')) {
                 const adminMessage = 
-                    lang === "UZB"
-                        ? `<b>📨 Yangi murojaat:</b>\n\n` +
-                          `👤 F.I.SH.: ${complaintSteps[userId].fullName}\n` +
-                          `📍 Manzil: ${complaintSteps[userId].address}\n` +
-                          `📞 Aloqa: ${complaintSteps[userId].phone}\n` +
-                          `📝 Murojaat mazmuni:\n${complaintSteps[userId].content}`
-                        : `<b>📨 Новое обращение:</b>\n\n` +
-                          `👤 Ф.И.О.: ${complaintSteps[userId].fullName}\n` +
-                          `📍 Адрес: ${complaintSteps[userId].address}\n` +
-                          `📞 Контакт: ${complaintSteps[userId].phone}\n` +
-                          `📝 Содержание обращения:\n${complaintSteps[userId].content}`;
+                    getTranslation(lang, 'COMPLAINT', 'ADMIN_MESSAGE', {
+                        fullName: complaintSteps[userId].fullName,
+                        address: complaintSteps[userId].address,
+                        phone: complaintSteps[userId].phone,
+                        content: complaintSteps[userId].content
+                    });
 
                 await ctx.api.sendMessage(process.env.ADMIN_ID, adminMessage, { parse_mode: "HTML" });
                 await requestsSection(ctx, lang);
