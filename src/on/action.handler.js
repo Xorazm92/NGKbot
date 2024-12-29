@@ -7,15 +7,24 @@ import {
   selectLang,
   saveLang,
   sendHomeMenu
-} from "../handlers/menu.handlers.js";
+} from '../handlers/menu.handlers.js';
+
 import {
+  handleStart,
+  handleLanguage,
+  handleMenu,
+  handleBack,
+  handleRequiredDocuments,
+  handleCallCenter,
+  handleNewMessages,
   handleInterestingMaterials,
   handleVideoTutorials,
   handleSamplefarms,
-  handleRequiredDocuments,
-  handleComplaintsAndSuggestions,
-  handleCallCenter
-} from "../handlers/common.handlers.js";
+  handleAllNews,
+  startComplaintFlow,
+  handleComplaintMessage
+} from '../handlers/common.handlers.js';
+
 import User from "../models/user.js";
 import { Keyboard } from "grammy";
 
@@ -77,7 +86,7 @@ bot.on("message:text", async (ctx) => {
 
     case "📝 Shikoyat va takliflar":
     case "📝 Жалобы и предложения":
-      await handleComplaintsAndSuggestions(ctx, lang);
+      await startComplaintFlow(ctx, lang);
       break;
 
     case "📞 Telefon raqamlar":
@@ -102,20 +111,13 @@ bot.on("message:text", async (ctx) => {
 
     case "📬 Yangi xabarlar":
     case "📬 Новые сообщения":
-      await ctx.reply(
-        lang === "UZB" 
-          ? "Yangi xabarlar tez orada qo'shiladi."
-          : "Новые сообщения будут добавлены в ближайшее время."
-      );
+      await handleNewMessages(ctx, lang);
       break;
 
-    case "📨 Barcha xabarlar":
-    case "📨 Все сообщения":
-      await ctx.reply(
-        lang === "UZB" 
-          ? "Barcha xabarlar tez orada qo'shiladi."
-          : "Все сообщения будут добавлены в ближайшее время."
-      );
+    case "📰 Barcha xabarlar":
+    case "📰 Все сообщения":
+      console.log("Barcha xabarlar tugmasi bosildi");
+      await handleAllNews(ctx, lang);
       break;
 
     case "🪧 Murojaatlar":
@@ -149,7 +151,27 @@ bot.on("message:text", async (ctx) => {
     case "⬅️ Назад":
       console.log("Orqaga bo'limiga o'tish");
       await sendHomeMenu(ctx, lang);
-      break;
+      if (user?.state === 'waiting_complaint') {
+        await handleComplaintMessage(ctx, lang);
+        return;
+    }
+
+
+//           // Agar foydalanuvchi shikoyat kiritayotgan bo'lsa, holatni tozalash
+//           if (user?.state === 'waiting_complaint') {
+//             user.state = null;
+//             await user.save();
+//           }
+//           await handleBack(ctx, lang);
+//           break;
+
+//         default:
+//           // Agar shikoyat kutilayotgan bo'lsa
+//           if (user?.state === 'waiting_complaint') {
+//             await processComplaint(ctx, lang);
+//           }
+//           break;
+
 
     default:
       console.log("Default holatga o'tish, no match found");
@@ -161,4 +183,15 @@ bot.on("message:text", async (ctx) => {
       await sendHomeMenu(ctx, lang);
       break;
   }
+});
+
+// Barcha xabarlar tugmasi bosilganda
+bot.hears("📰 Barcha xabarlar", async (ctx) => {
+  console.log("Barcha xabarlar tugmasi bosildi");
+  await handleAllNews(ctx, "UZB");
+});
+
+bot.hears("📰 Все сообщения", async (ctx) => {
+  console.log("Нажата кнопка Все сообщения");
+  await handleAllNews(ctx, "RUS");
 });

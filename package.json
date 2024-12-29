@@ -17,7 +17,9 @@
     "fs": "^0.0.1-security",
     "grammy": "^1.33.0",
     "imagekit": "^6.0.0",
-    "mongoose": "^8.8.4"
+    "input": "^1.0.1",
+    "mongoose": "^8.8.4",
+    "telegram": "^2.26.16"
   },
   "description": ""
 }

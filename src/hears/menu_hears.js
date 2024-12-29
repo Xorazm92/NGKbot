@@ -14,7 +14,8 @@ import {
     handleSamplefarms,
     handleRequiredDocuments,
     handleComplaintsAndSuggestions,
-    handleCallCenter
+    handleCallCenter,
+    startComplaintFlow
 } from "../handlers/common.handlers.js";
 import User from "../models/user.js";
 
@@ -88,11 +89,23 @@ bot.hears(["📋 Murojaatlar haqida", "📋 О запросах"], async (ctx) =
     );
 });
 
+// bot.hears(["📝 Shikoyat va takliflar", "📝 Жалобы и предложения"], async (ctx) => {
+//     const user = await User.findOne({ user_id: ctx.message.from.id });
+//     const lang = user?.user_lang || "UZB";
+//     await handleComplaint(ctx, lang);
+// });
+
+// Shikoyat va takliflar uchun
+// bot.hears(["📝 Shikoyat va takliflar", "📝 Жалобы и предложения"], async (ctx) => {
+//     const user_id = ctx?.from?.id;
+//     const user = await User.findOne({ user_id });
+//     await handleComplaint(ctx, user?.user_lang || "UZB");
+// });
 bot.hears(["📝 Shikoyat va takliflar", "📝 Жалобы и предложения"], async (ctx) => {
-    const user = await User.findOne({ user_id: ctx.message.from.id });
-    const lang = user?.user_lang || "UZB";
-    await handleComplaintsAndSuggestions(ctx, lang);
+    const lang = ctx.message.text === "📝 Shikoyat va takliflar" ? "UZB" : "RUS";
+    await startComplaintFlow(ctx, lang);
 });
+
 
 // Foydalanuvchilar bo'limi
 bot.hears(["📞 Telefon raqamlar", "📞 Телефонные номера"], async (ctx) => {
