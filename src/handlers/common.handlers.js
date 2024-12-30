@@ -1,4 +1,5 @@
 import User from "../models/user.js";
+import { Complaint } from "../models/complaint.js";
 import bot from '../config/bot.js'
 import axios from 'axios';
 import fs from 'fs';
@@ -16,7 +17,7 @@ import {
 } from './menu.handlers.js';
 import { Keyboard } from "grammy";
 
-const complaintSteps = {};
+export const complaintSteps = {};
 
 // Qiziqarli ma'lumotlar uchun handler
 export const handleInterestingMaterials = async (ctx, lang) => {
@@ -352,173 +353,202 @@ export const handleBack = async (ctx, lang) => {
     }
 };
 
-// Shikoyat va takliflar bo'limi uchun funksiya
-export const startComplaintFlow = async (ctx, lang) => {
+// Shikoyat boshlash
+export const handleComplaint = async (ctx, lang) => {
     const userId = ctx.from.id;
-    const user = await User.findOne({ user_id: userId });
-
-    if (!user) {
-        await ctx.reply(
-            getTranslation('UZB', 'COMPLAINT', 'START_ERROR'),
-            { parse_mode: "HTML" }
-        );
-        return;
-    }
-
     complaintSteps[userId] = { step: "fullName", lang };
 
     const keyboard = new Keyboard()
-        .text(getTranslation(lang, 'COMPLAINT', 'FULL_NAME'))
-        .row()
-        .oneTime()
+        .text(getTranslation(lang, 'COMMON', 'CANCEL'))
         .resized();
 
-    await ctx.reply(
-        getTranslation(lang, 'COMPLAINT', 'START_MESSAGE'),
-        { 
-            parse_mode: "HTML",
-            reply_markup: keyboard 
-        }
-    );
+    await ctx.reply(getTranslation(lang, 'COMPLAINT', 'START'), {
+        parse_mode: "HTML",
+        reply_markup: keyboard
+    });
+    await ctx.reply(getTranslation(lang, 'COMPLAINT', 'FULLNAME'));
 };
 
-export const handleComplaintMessage = async (ctx) => {
+export const processComplaint = async (ctx, lang) => {
     const userId = ctx.from.id;
     const userMessage = ctx.message?.text;
 
-    if (!complaintSteps[userId]) {
+    // Check if user is in complaint flow and has correct language
+    if (!complaintSteps[userId] || complaintSteps[userId].lang !== lang) {
         return false;
     }
 
-    const { step, lang } = complaintSteps[userId];
+    // Handle cancellation
+    if (userMessage === getTranslation(lang, 'COMMON', 'CANCEL')) {
+        delete complaintSteps[userId];
+        await ctx.reply(getTranslation(lang, 'COMPLAINT', 'CANCELLED'));
+        return true;
+    }
 
-    const createKeyboard = (buttonText) => {
-        return new Keyboard()
-            .text(buttonText)
-            .row()
-            .oneTime()
-            .resized();
-    };
+    const { step } = complaintSteps[userId];
 
     switch (step) {
         case "fullName":
-            if (userMessage === getTranslation(lang, 'COMPLAINT', 'FULL_NAME')) {
-                await ctx.reply(
-                    getTranslation(lang, 'COMPLAINT', 'FULL_NAME_INPUT'),
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingFullName";
-            }
-            break;
-
-        case "waitingFullName":
             complaintSteps[userId].fullName = userMessage;
             complaintSteps[userId].step = "address";
-            await ctx.reply(
-                getTranslation(lang, 'COMPLAINT', 'ADDRESS_INPUT'),
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: createKeyboard(getTranslation(lang, 'COMPLAINT', 'ADDRESS'))
-                }
-            );
+            await ctx.reply(getTranslation(lang, 'COMPLAINT', 'ADDRESS'));
             break;
 
         case "address":
-            if (userMessage === getTranslation(lang, 'COMPLAINT', 'ADDRESS')) {
-                await ctx.reply(
-                    getTranslation(lang, 'COMPLAINT', 'ADDRESS_INPUT'),
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingAddress";
-            }
-            break;
-
-        case "waitingAddress":
             complaintSteps[userId].address = userMessage;
             complaintSteps[userId].step = "phone";
-            await ctx.reply(
-                getTranslation(lang, 'COMPLAINT', 'PHONE_INPUT'),
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: createKeyboard(getTranslation(lang, 'COMPLAINT', 'PHONE'))
-                }
-            );
+            await ctx.reply(getTranslation(lang, 'COMPLAINT', 'PHONE'));
             break;
 
         case "phone":
-            if (userMessage === getTranslation(lang, 'COMPLAINT', 'PHONE')) {
-                await ctx.reply(
-                    getTranslation(lang, 'COMPLAINT', 'PHONE_INPUT'),
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingPhone";
+            // Simple phone validation
+            if (!userMessage.match(/^\+?[0-9\s-]{10,}$/)) {
+                await ctx.reply(getTranslation(lang, 'COMPLAINT', 'INVALID_PHONE'));
+                return true;
             }
+            complaintSteps[userId].phone = userMessage;
+            complaintSteps[userId].step = "purpose";
+
+            const purposeKeyboard = new Keyboard()
+                .text(getTranslation(lang, 'COMPLAINT', 'TYPES', 'APPLICATION'))
+                .text(getTranslation(lang, 'COMPLAINT', 'TYPES', 'COMPLAINT'))
+                .row()
+                .text(getTranslation(lang, 'COMPLAINT', 'TYPES', 'SUGGESTION'))
+                .row()
+                .text(getTranslation(lang, 'COMMON', 'CANCEL'))
+                .resized();
+
+            await ctx.reply(getTranslation(lang, 'COMPLAINT', 'PURPOSE'), {
+                reply_markup: purposeKeyboard
+            });
             break;
 
-        case "waitingPhone":
-            complaintSteps[userId].phone = userMessage;
+        case "purpose":
+            const validTypes = [
+                getTranslation(lang, 'COMPLAINT', 'TYPES', 'APPLICATION'),
+                getTranslation(lang, 'COMPLAINT', 'TYPES', 'COMPLAINT'),
+                getTranslation(lang, 'COMPLAINT', 'TYPES', 'SUGGESTION')
+            ];
+            if (!validTypes.includes(userMessage)) {
+                await ctx.reply(getTranslation(lang, 'COMPLAINT', 'INVALID_PURPOSE'));
+                return true;
+            }
+            complaintSteps[userId].purpose = userMessage;
             complaintSteps[userId].step = "content";
-            await ctx.reply(
-                getTranslation(lang, 'COMPLAINT', 'CONTENT_INPUT'),
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: createKeyboard(getTranslation(lang, 'COMPLAINT', 'CONTENT'))
-                }
-            );
+            await ctx.reply(getTranslation(lang, 'COMPLAINT', 'CONTENT'));
             break;
 
         case "content":
-            if (userMessage === getTranslation(lang, 'COMPLAINT', 'CONTENT')) {
-                await ctx.reply(
-                    getTranslation(lang, 'COMPLAINT', 'CONTENT_INPUT'),
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingContent";
-            }
-            break;
-
-        case "waitingContent":
             complaintSteps[userId].content = userMessage;
             complaintSteps[userId].step = "confirm";
 
             const confirmKeyboard = new Keyboard()
-                .text(getTranslation(lang, 'COMPLAINT', 'CONFIRM_YES'))
-                .text(getTranslation(lang, 'COMPLAINT', 'CONFIRM_NO'))
-                .row()
-                .oneTime()
+                .text(getTranslation(lang, 'COMMON', 'CONFIRM'))
+                .text(getTranslation(lang, 'COMMON', 'CANCEL'))
                 .resized();
 
-            await ctx.reply(
-                getTranslation(lang, 'COMPLAINT', 'CONFIRM_MESSAGE'),
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: confirmKeyboard 
-                }
-            );
+            const confirmMessage = 
+                `<b>Murojaat ma'lumotlari:</b>\n\n` +
+                `👤 F.I.SH.: ${complaintSteps[userId].fullName}\n` +
+                `📍 Manzil: ${complaintSteps[userId].address}\n` +
+                `📞 Telefon: ${complaintSteps[userId].phone}\n` +
+                `📝 Turi: ${complaintSteps[userId].purpose}\n` +
+                `✍️ Matn: ${complaintSteps[userId].content}`;
+
+            await ctx.reply(confirmMessage, {
+                parse_mode: "HTML",
+                reply_markup: confirmKeyboard
+            });
             break;
 
         case "confirm":
-            if (userMessage === getTranslation(lang, 'COMPLAINT', 'CONFIRM_YES')) {
+            if (userMessage === getTranslation(lang, 'COMMON', 'CONFIRM')) {
+                const complaint = new Complaint({
+                    user_id: userId,
+                    fullName: complaintSteps[userId].fullName,
+                    address: complaintSteps[userId].address,
+                    phone: complaintSteps[userId].phone,
+                    purpose: complaintSteps[userId].purpose,
+                    content: complaintSteps[userId].content
+                });
+
+                await complaint.save();
+
+                // Send notification to admin
                 const adminMessage = 
-                    getTranslation(lang, 'COMPLAINT', 'ADMIN_MESSAGE', {
-                        fullName: complaintSteps[userId].fullName,
-                        address: complaintSteps[userId].address,
-                        phone: complaintSteps[userId].phone,
-                        content: complaintSteps[userId].content
-                    });
+                    `<b>📨 Yangi murojaat:</b>\n\n` +
+                    `👤 F.I.SH.: ${complaintSteps[userId].fullName}\n` +
+                    `📍 Manzil: ${complaintSteps[userId].address}\n` +
+                    `📞 Telefon: ${complaintSteps[userId].phone}\n` +
+                    `📝 Turi: ${complaintSteps[userId].purpose}\n` +
+                    `✍️ Matn: ${complaintSteps[userId].content}`;
 
-                await ctx.api.sendMessage(process.env.ADMIN_ID, adminMessage, { parse_mode: "HTML" });
-                await requestsSection(ctx, lang);
+                // TODO: Replace with actual admin ID from env
+                const ADMIN_ID = process.env.ADMIN_ID;
+                if (ADMIN_ID) {
+                    try {
+                        await ctx.api.sendMessage(ADMIN_ID, adminMessage, {
+                            parse_mode: "HTML",
+                            reply_markup: new Keyboard()
+                                .text("✅ Tasdiqlash")
+                                .text("❌ Rad etish")
+                                .resized()
+                        });
+                    } catch (error) {
+                        console.error("Error sending message to admin:", error);
+                    }
+                }
 
-                const user = await User.findOne({ user_id: userId });
-                user.state = null;
-                await user.save();
-            } else {
-                await requestsSection(ctx, lang);
+                const mainKeyboard = new Keyboard()
+                    .text("📝 Shikoyat va takliflar")
+                    .row()
+                    .text("⬅️ Orqaga")
+                    .resized();
+
+                await ctx.reply(getTranslation(lang, 'COMPLAINT', 'SUCCESS'), {
+                    reply_markup: mainKeyboard
+                });
+                delete complaintSteps[userId];
+            } else if (userMessage === getTranslation(lang, 'COMMON', 'CANCEL')) {
+                delete complaintSteps[userId];
+                const mainKeyboard = new Keyboard()
+                    .text("📝 Shikoyat va takliflar")
+                    .row()
+                    .text("⬅️ Orqaga")
+                    .resized();
+                await ctx.reply(getTranslation(lang, 'COMPLAINT', 'CANCELLED'), {
+                    reply_markup: mainKeyboard
+                });
             }
-            delete complaintSteps[userId];
             break;
     }
-
     return true;
+};
+
+export const handleComplaintCallback = async (ctx) => {
+    const callbackData = ctx.callbackQuery.data;
+    const [action, complaintId] = callbackData.split('=');
+    
+    try {
+        const complaint = await Complaint.findById(complaintId);
+        if (!complaint) {
+            await ctx.answerCallbackQuery("Murojaat topilmadi");
+            return;
+        }
+
+        if (action === 'approve_complaint') {
+            complaint.status = 'approved';
+            await complaint.save();
+            await ctx.api.sendMessage(complaint.user_id, "✅ Sizning murojaatingiz tasdiqlandi va tegishli bo'limga yuborildi");
+            await ctx.answerCallbackQuery("✅ Murojaat tasdiqlandi");
+        } else if (action === 'reject_complaint') {
+            complaint.status = 'rejected';
+            await complaint.save();
+            await ctx.api.sendMessage(complaint.user_id, "❌ Sizning murojaatingiz rad etildi. Iltimos, ma'lumotlarni tekshirib qayta yuboring");
+            await ctx.answerCallbackQuery("❌ Murojaat rad etildi");
+        }
+    } catch (error) {
+        console.error("Error handling complaint callback:", error);
+        await ctx.answerCallbackQuery("Xatolik yuz berdi");
+    }
 };

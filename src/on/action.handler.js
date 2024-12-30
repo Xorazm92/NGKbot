@@ -21,10 +21,13 @@ import {
   handleVideoTutorials,
   handleSamplefarms,
   handleAllNews,
-  startComplaintFlow,
-  handleComplaintMessage
+  handleComplaint,
+  handleComplaintCallback,
+  processComplaint,
+  complaintSteps
 } from '../handlers/common.handlers.js';
 
+import { getTranslation } from '../utils/common.js';
 import User from "../models/user.js";
 import { Keyboard } from "grammy";
 
@@ -86,7 +89,8 @@ bot.on("message:text", async (ctx) => {
 
     case "📝 Shikoyat va takliflar":
     case "📝 Жалобы и предложения":
-      await startComplaintFlow(ctx, lang);
+      console.log("Shikoyat va takliflar bo'limiga o'tish");
+      await handleComplaint(ctx, lang);
       break;
 
     case "📞 Telefon raqamlar":
@@ -152,29 +156,17 @@ bot.on("message:text", async (ctx) => {
       console.log("Orqaga bo'limiga o'tish");
       await sendHomeMenu(ctx, lang);
       if (user?.state === 'waiting_complaint') {
-        await handleComplaintMessage(ctx, lang);
+        delete complaintSteps[user_id]; // Reset complaint state
         return;
-    }
-
-
-//           // Agar foydalanuvchi shikoyat kiritayotgan bo'lsa, holatni tozalash
-//           if (user?.state === 'waiting_complaint') {
-//             user.state = null;
-//             await user.save();
-//           }
-//           await handleBack(ctx, lang);
-//           break;
-
-//         default:
-//           // Agar shikoyat kutilayotgan bo'lsa
-//           if (user?.state === 'waiting_complaint') {
-//             await processComplaint(ctx, lang);
-//           }
-//           break;
-
+      }
+      break;
 
     default:
       console.log("Default holatga o'tish, no match found");
+      if (user?.state === 'waiting_complaint') {
+        await processComplaint(ctx, lang);
+        return;
+      }
       await ctx.reply(
         lang === "UZB"
           ? "❌ Mavjud bo'lmagan buyruq. Iltimos, menyudan tanlang."
@@ -194,4 +186,30 @@ bot.hears("📰 Barcha xabarlar", async (ctx) => {
 bot.hears("📰 Все сообщения", async (ctx) => {
   console.log("Нажата кнопка Все сообщения");
   await handleAllNews(ctx, "RUS");
+});
+
+// Shikoyat bo'limi uchun handler
+bot.hears("📝 Shikoyat va takliflar", async (ctx) => {
+  console.log("Shikoyat va takliflar bo'limiga o'tish");
+  const user_id = ctx.from.id;
+  const user = await User.findOne({ user_id });
+  const lang = user?.user_lang || 'UZB';
+  await handleComplaint(ctx, lang);
+});
+
+bot.on("callback_query:data", async (ctx) => {
+  const callbackData = ctx.callbackQuery.data;
+  
+  // Shikoyatlar uchun callbacklar
+  if (callbackData.startsWith('approve_complaint=') || callbackData.startsWith('reject_complaint=')) {
+    await handleComplaintCallback(ctx);
+    return;
+  }
+
+  const user_id = ctx.callbackQuery.from.id;
+  const data = await User.find({ user_id });
+  const user = data?.[0];
+  const lang = user.user_lang;
+
+  // rest of the existing callback handling code ...
 });

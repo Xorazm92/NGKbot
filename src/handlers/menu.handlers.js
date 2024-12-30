@@ -1,5 +1,7 @@
 import { Keyboard } from "grammy";
 import User from "../models/user.js";
+import { getTranslation } from "../utils/common.js";
+import { handleComplaint } from "./common.handlers.js";
 
 // **Tilni tanlash funksiyasi**
 export const selectLang = async (ctx) => {
@@ -48,20 +50,25 @@ export const userSection = async (ctx, lang) => {
 };
 
 // **Murojaatlar bo'limi**
-// export const requestsSection = async (ctx, lang) => {
-//   const keyboard = new Keyboard()
-//     .text(lang === "UZB" ? "📋 Murojaatlar haqida" : "📋 О запросах")
-//     .text(lang === "UZB" ? "📝 Shikoyat va takliflar" : "📝 Жалобы и предложения")
-//     .row()
-//     .text(lang === "UZB" ? "⬅️ Orqaga" : "⬅️ Назад")
-//     .oneTime()
-//     .resized();
+export const requestsSection = async (ctx, lang) => {
+    try {
+        const keyboard = new Keyboard()
+            .text(getTranslation(lang, 'MENU', 'ADVERTISEMENT'))
+            .row()
+            .text(getTranslation(lang, 'MENU', 'COMPLAINT'))
+            .row()
+            .text(getTranslation(lang, 'COMMON', 'BACK'))
+            .resized();
 
-//   await ctx.reply(
-//     lang === "UZB" ? "<b>Murojaatlar bo'limi:</b>" : "<b>Раздел Запросы:</b>",
-//     { parse_mode: "HTML", reply_markup: keyboard }
-//   );
-// };
+        await ctx.reply(getTranslation(lang, 'MENU', 'REQUESTS_MENU'), {
+            parse_mode: "HTML",
+            reply_markup: keyboard
+        });
+    } catch (error) {
+        console.error('Error in requests section:', error);
+        await ctx.reply(getTranslation(lang, 'COMMON', 'ERROR'));
+    }
+};
 
 // **Adabiyotlar bo'limi**
 export const literatureSection = async (ctx, lang) => {
@@ -116,28 +123,4 @@ export const sendHomeMenu = async (ctx, lang) => {
     lang === "UZB" ? "<b>Asosiy menyu:</b>" : "<b>Главное меню:</b>",
     { parse_mode: "HTML", reply_markup: keyboard }
   );
-};
-
-export const requestsSection = async (ctx, lang) => {
-  try {
-      const keyboard = new Keyboard()
-          .text(lang === "UZB" ? "📝 Shikoyat va takliflar" : "📝 Жалобы и предложения")
-          .row()
-          .text(lang === "UZB" ? "⬅️ Orqaga" : "⬅️ Назад")
-          .resized();
-
-      await ctx.reply(
-          lang === "UZB"
-              ? "📋 Murojaatlar bo'limi"
-              : "📋 Раздел обращений",
-          { reply_markup: keyboard }
-      );
-  } catch (error) {
-      console.error('Error in requests section:', error);
-      await ctx.reply(
-          lang === "UZB"
-              ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-              : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
-      );
-  }
 };

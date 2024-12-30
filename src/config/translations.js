@@ -1,5 +1,16 @@
 export const translations = {
     UZB: {
+        COMMON: {
+            BACK: "⬅️ Orqaga",
+            ERROR: "❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.",
+            LOADING: "⏳️ Yuklanmoqda...",
+            SUCCESS: "✅ Muvaffaqiyatli",
+            CANCEL: "❌ Bekor qilish",
+            YES: "✅ Ha",
+            NO: "❌ Yo'q",
+            CONFIRM: "✅ Tasdiqlash",
+            NEXT: "➡️ Keyingisi"
+        },
         INTERESTING_MATERIALS: {
             START: "📚 Qiziqarli ma'lumotlarni yuborish boshlanmoqda...",
             ERROR: "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
@@ -26,37 +37,49 @@ export const translations = {
             MESSAGE: "O'zbekiston Temir Yo'llari rasmiy yangiliklar sahifasi"
         },
         COMPLAINT: {
-            START_ERROR: "Botga \"/start\" tugmasi orqali qayta kiring",
-            START_MESSAGE: "<b>Shikoyat va takliflar uchun ariza berish</b>\n\nQuyidagi ma'lumotlarni ketma-ketlikda kiriting:",
-            FULL_NAME: "👤 F.I.SH. kiriting",
-            FULL_NAME_INPUT: "<b>👤 F.I.SH.ni to'liq kiriting:</b>",
-            ADDRESS: "📍 Manzil kiriting",
-            ADDRESS_INPUT: "<b>📍 Manzilingizni kiriting:</b>",
-            PHONE: "📞 Telefon raqam kiriting",
-            PHONE_INPUT: "<b>📞 Telefon raqamingizni kiriting:</b>",
-            CONTENT: "📝 Murojaat matnini kiriting",
-            CONTENT_INPUT: "<b>📝 Murojaatingiz mazmunini kiriting:</b>",
-            CONFIRM_YES: "✅ Ha",
-            CONFIRM_NO: "❌ Yo'q",
-            CONFIRM_MESSAGE: "<b>Shikoyat ma'lumotlari:</b>\n\n👤 F.I.SH.: {fullName}\n📍 Manzil: {address}\n📞 Aloqa: {phone}\n📝 Murojaat mazmuni:\n{content}\n\n<b>Ma'lumotlar to'g'rimi?</b>",
-            ADMIN_MESSAGE: "<b>📨 Yangi murojaat:</b>\n\n👤 F.I.SH.: {fullName}\n📍 Manzil: {address}\n📞 Aloqa: {phone}\n📝 Murojaat mazmuni:\n{content}"
+            START: "Shikoyat yoki taklif yuborish uchun quyidagi ma'lumotlarni kiriting:",
+            FULLNAME: "To'liq ismingizni kiriting:",
+            ADDRESS: "Manzilingizni kiriting:",
+            PHONE: "Telefon raqamingizni kiriting:",
+            PURPOSE: "Murojaat turini tanlang:",
+            CONTENT: "Murojaat matnini kiriting:",
+            CONFIRM: "Ma'lumotlarni tasdiqlaysizmi?",
+            SUCCESS: "✅ Murojaatingiz muvaffaqiyatli yuborildi!",
+            CANCELLED: "❌ Murojaat bekor qilindi.",
+            INVALID_PHONE: "❌ Noto'g'ri telefon raqam formati. Iltimos, qayta kiriting.",
+            INVALID_PURPOSE: "❌ Iltimos, tugmalardan birini tanlang",
+            TYPES: {
+                APPLICATION: "Ariza",
+                COMPLAINT: "Shikoyat",
+                SUGGESTION: "Taklif"
+            }
         },
         MENU: {
             USERS: "👥 Foydalanuvchilar",
-            REQUESTS: "📝 Murojaatlar",
+            REQUESTS: "🪧 Murojaatlar",
+            REQUESTS_MENU: "<b>🪧 Murojaatlar bo'limi</b>\n\nKerakli bo'limni tanlang:",
             LITERATURE: "📚 Adabiyotlar",
-            MESSAGES: "📨 Xabarlar"
+            MESSAGES: "📨 Xabarlar",
+            ADVERTISEMENT: "📢 E'lon berish",
+            COMPLAINT: "📝 Shikoyat va takliflar"
         },
         LANGUAGE: {
             UZB: "🇺🇿 O'zbek tili",
             RUS: "🇷🇺 Русский"
-        },
-        COMMON: {
-            BACK: "⬅️ Orqaga",
-            ERROR: "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
         }
     },
     RUS: {
+        COMMON: {
+            BACK: "⬅️ Назад",
+            ERROR: "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз.",
+            LOADING: "⏳️ Загрузка...",
+            SUCCESS: "✅ Успешно",
+            CANCEL: "❌ Отменить",
+            YES: "✅ Да",
+            NO: "❌ Нет",
+            CONFIRM: "✅ Подтвердить",
+            NEXT: "➡️ Далее"
+        },
         INTERESTING_MATERIALS: {
             START: "📚 Начинается отправка интересных материалов...",
             ERROR: "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
@@ -83,34 +106,35 @@ export const translations = {
             MESSAGE: "Официальная страница новостей Узбекистон Темир Йуллари"
         },
         COMPLAINT: {
-            START_ERROR: "Перезайдите в бот через кнопку \"/start\"",
-            START_MESSAGE: "<b>Подача заявки для жалоб и предложений</b>\n\nВведите следующую информацию в указанном порядке:",
-            FULL_NAME: "👤 Ввести Ф.И.О.",
-            FULL_NAME_INPUT: "<b>👤 Введите Ф.И.О. полностью:</b>",
-            ADDRESS: "📍 Ввести адрес",
-            ADDRESS_INPUT: "<b>📍 Введите ваш адрес:</b>",
-            PHONE: "📞 Ввести номер телефона",
-            PHONE_INPUT: "<b>📞 Введите ваш номер телефона:</b>",
-            CONTENT: "📝 Ввести текст обращения",
-            CONTENT_INPUT: "<b>📝 Введите содержание обращения:</b>",
-            CONFIRM_YES: "✅ Да",
-            CONFIRM_NO: "❌ Нет",
-            CONFIRM_MESSAGE: "<b>Данные жалобы:</b>\n\n👤 Ф.И.О.: {fullName}\n📍 Адрес: {address}\n📞 Контакт: {phone}\n📝 Содержание обращения:\n{content}\n\n<b>Данные верны?</b>",
-            ADMIN_MESSAGE: "<b>📨 Новое обращение:</b>\n\n👤 Ф.И.О.: {fullName}\n📍 Адрес: {address}\n📞 Контакт: {phone}\n📝 Содержание обращения:\n{content}"
+            START: "Для отправки жалобы или предложения, введите следующие данные:",
+            FULLNAME: "Введите ваше полное имя:",
+            ADDRESS: "Введите ваш адрес:",
+            PHONE: "Введите ваш номер телефона:",
+            PURPOSE: "Выберите тип обращения:",
+            CONTENT: "Введите текст обращения:",
+            CONFIRM: "Подтверждаете данные?",
+            SUCCESS: "✅ Ваше обращение успешно отправлено!",
+            CANCELLED: "❌ Обращение отменено.",
+            INVALID_PHONE: "❌ Неверный формат номера телефона. Пожалуйста, введите еще раз.",
+            INVALID_PURPOSE: "❌ Пожалуйста, выберите один из вариантов",
+            TYPES: {
+                APPLICATION: "Заявление",
+                COMPLAINT: "Жалоба",
+                SUGGESTION: "Предложение"
+            }
         },
         MENU: {
             USERS: "👥 Пользователи",
-            REQUESTS: "📝 Обращения",
+            REQUESTS: "🪧 Обращения",
+            REQUESTS_MENU: "<b>🪧 Раздел обращений</b>\n\nВыберите нужный раздел:",
             LITERATURE: "📚 Литература",
-            MESSAGES: "📨 Сообщения"
+            MESSAGES: "📨 Сообщения",
+            ADVERTISEMENT: "📢 Подать объявление",
+            COMPLAINT: "📝 Жалобы и предложения"
         },
         LANGUAGE: {
             UZB: "🇺🇿 Узбекский",
             RUS: "🇷🇺 Русский"
-        },
-        COMMON: {
-            BACK: "⬅️ Назад",
-            ERROR: "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
         }
     }
 };
