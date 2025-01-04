@@ -141,3 +141,5 @@ export const requestsSection = async (ctx, lang) => {
       );
   }
 };
+
+export { handleUserList } from './common.handlers.js';

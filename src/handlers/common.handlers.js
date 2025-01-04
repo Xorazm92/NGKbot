@@ -13,8 +13,27 @@ import {
     selectLang
 } from './menu.handlers.js';
 import { Keyboard } from "grammy";
+import { 
+    handleError, 
+    validateContent, 
+    validateFullName, 
+    validatePhone,
+    sanitizeInput,
+    isSessionExpired 
+} from "../validates/complainValidate.js";
 
-const complaintSteps = {};
+const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 daqiqa
+export const complaintSteps = {};
+
+// Eng tepaga qo'shing
+const createKeyboard = (buttonText) => {
+    return new Keyboard()
+        .text(buttonText)
+        .row()
+        .oneTime()
+        .resized();
+};
+
 
 // Qiziqarli ma'lumotlar uchun handler
 export const handleInterestingMaterials = async (ctx, lang) => {
@@ -438,322 +457,200 @@ export const handleBack = async (ctx, lang) => {
     }
 };
 
-// // Shikoyat va takliflar bo'limi uchun funksiya
-// export const handleComplaint = async (ctx, lang) => {
-//     try {
-//         const user_id = ctx?.from?.id;
-//         const user = await User.findOne({ user_id });
 
-//         if (!user) {
-//             await ctx.reply(
-//                 lang === "UZB" 
-//                     ? "Botga \"/start\" tugmasi orqali qayta kiring"
-//                     : "Перезайдите в бот через кнопку \"/start\""
-//             );
-//             return;
-//         }
+export const startComplaintFlow = async (ctx) => {
+    try {
+        const userId = ctx.from.id;
+        const user = await User.findOne({ user_id: userId });
+        const lang = user?.user_lang || "UZB";
 
-//         // Foydalanuvchi holatini yangilash
-//         user.state = 'waiting_complaint';
-//         await user.save();
+        complaintSteps[userId] = {
+            step: "fullName",
+            timestamp: Date.now(),
+            lang: lang,
+            data: {}
+        };
 
-//         await ctx.reply(
-//             lang === "UZB" 
-//                 ? "📝 Iltimos, quyidagi ma'lumotlarni kiriting:\n\n" +
-//                   "1. F.I.SH. (to'liq)\n" +
-//                   "2. Manzilingiz\n" +
-//                   "3. Telefon raqamingiz\n" +
-//                   "4. Murojaatingiz mazmuni\n\n" +
-//                   "Har bir punktni yangi qatordan yozing."
-//                 : "📝 Пожалуйста, введите следующую информацию:\n\n" +
-//                   "1. Ф.И.О. (полностью)\n" +
-//                   "2. Ваш адрес\n" +
-//                   "3. Номер телефона\n" +
-//                   "4. Содержание обращения\n\n" +
-//                   "Каждый пункт пишите с новой строки."
-//         );
-
-//     } catch (error) {
-//         console.error('Shikoyat formasi xatoligi:', error);
-//         await ctx.reply(
-//             lang === "UZB" 
-//                 ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-//                 : "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз."
-//         );
-//     }
-// };
-// // Shikoyat ma'lumotlarini qayta ishlash
-// export const processComplaint = async (ctx, lang) => {
-//     try {
-//         const user_id = ctx?.from?.id;
-//         const message = ctx.message.text;
-        
-//         // Xabarni qatorlarga ajratish
-//         const lines = message.split('\n').filter(line => line.trim());
-        
-//         if (lines.length < 4) {
-//             await ctx.reply(
-//                 lang === "UZB"
-//                     ? "❌ Iltimos, barcha ma'lumotlarni to'liq kiriting."
-//                     : "❌ Пожалуйста, введите всю информацию полностью."
-//             );
-//             return;
-//         }
-
-//         // Ma'lumotlarni formatlash
-//         const complaintData = {
-//             fullName: lines[0],
-//             address: lines[1],
-//             contact: lines[2],
-//             content: lines.slice(3).join('\n')
-//         };
-
-//         // Adminga xabar yuborish
-//         const adminMessage = 
-//             lang === "UZB"
-//                 ? `📨 Yangi murojaat:\n\n` +
-//                   `👤 F.I.SH.: ${complaintData.fullName}\n` +
-//                   `📍 Manzil: ${complaintData.address}\n` +
-//                   `📞 Aloqa: ${complaintData.contact}\n` +
-//                   `📝 Murojaat mazmuni:\n${complaintData.content}`
-//                 : `📨 Новое обращение:\n\n` +
-//                   `👤 Ф.И.О.: ${complaintData.fullName}\n` +
-//                   `📍 Адрес: ${complaintData.address}\n` +
-//                   `📞 Контакт: ${complaintData.contact}\n` +
-//                   `📝 Содержание обращения:\n${complaintData.content}`;
-
-//         await ctx.api.sendMessage(process.env.ADMIN_ID, adminMessage);
-
-//         // Foydalanuvchiga tasdiqlash xabari
-//         await ctx.reply(
-//             lang === "UZB"
-//                 ? "✅ Murojaatingiz qabul qilindi va adminlarga yuborildi.\nTez orada ko'rib chiqiladi."
-//                 : "✅ Ваше обращение принято и отправлено администраторам.\nОно будет рассмотрено в ближайшее время."
-//         );
-
-//         // Foydalanuvchi holatini tozalash
-//         const user = await User.findOne({ user_id });
-//         user.state = null;
-//         await user.save();
-
-//     } catch (error) {
-//         console.error('Shikoyatni qayta ishlashda xatolik:', error);
-//         await ctx.reply(
-//             lang === "UZB"
-//                 ? "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-//                 : "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз."
-//         );
-//     }
-// };
-
-
-export const startComplaintFlow = async (ctx, lang) => {
-    const userId = ctx.from.id;
-    const user = await User.findOne({ user_id: userId });
-
-    if (!user) {
-        await ctx.reply(
-            lang === "UZB" 
-                ? "Botga \"/start\" tugmasi orqali qayta kiring"
-                : "Перезайдите в бот через кнопку \"/start\"",
-            { parse_mode: "HTML" }
+        const fullNameKeyboard = createKeyboard(
+            lang === "UZB" ? "👤 F.I.SH. kiriting" : "👤 Ввести Ф.И.О."
         );
-        return;
+
+        await ctx.reply(
+            lang === "UZB"
+                ? "Shikoyat va takliflar yuborish uchun quyidagi bosqichlardan o'ting:"
+                : "Пройдите следующие шаги для отправки жалоб и предложений:",
+            { reply_markup: fullNameKeyboard }
+        );
+
+        return true;
+    } catch (error) {
+        console.error('Shikoyat boshlash xatoligi:', error);
+        await handleError(ctx, userId);
+        return false;
     }
-
-    complaintSteps[userId] = { step: "fullName", lang };
-
-    const keyboard = new Keyboard()
-        .text(lang === "UZB" ? "👤 F.I.SH. kiriting" : "👤 Ввести Ф.И.О.")
-        .row()
-        .oneTime()
-        .resized();
-
-    await ctx.reply(
-        lang === "UZB"
-            ? "<b>Shikoyat va takliflar uchun ariza berish</b>\n\nQuyidagi ma'lumotlarni ketma-ketlikda kiriting:"
-            : "<b>Подача заявки для жалоб и предложений</b>\n\nВведите следующую информацию в указанном порядке:",
-        { 
-            parse_mode: "HTML",
-            reply_markup: keyboard 
-        }
-    );
 };
 
 export const handleComplaintMessage = async (ctx) => {
-    const userId = ctx.from.id;
-    const userMessage = ctx.message?.text;
+    try {
+        const userId = ctx.from.id;
+        const userMessage = ctx.message?.text;
+        
+        if (!complaintSteps[userId]) return false;
 
-    if (!complaintSteps[userId]) {
+        const lang = complaintSteps[userId].lang;
+        const step = complaintSteps[userId].step;
+        const sanitizedMessage = sanitizeInput(userMessage);
+
+        switch (step) {
+            case "fullName":
+                if (userMessage === (lang === "UZB" ? "👤 F.I.SH. kiriting" : "👤 Ввести Ф.И.О.")) {
+                    complaintSteps[userId].step = "waitingFullName";
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "👤 F.I.SH.ni to'liq kiriting:"
+                            : "👤 Введите Ф.И.О. полностью:"
+                    );
+                    return true;
+                }
+                return false;
+
+            case "waitingFullName":
+                if (!validateFullName(sanitizedMessage)) {
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "❌ Noto'g'ri F.I.SH. Iltimos, qaytadan kiriting."
+                            : "❌ Неверный формат Ф.И.О. Пожалуйста, введите снова."
+                    );
+                    return true;
+                }
+                complaintSteps[userId].data.fullName = sanitizedMessage;
+                complaintSteps[userId].step = "address";
+                
+                const addressKeyboard = createKeyboard(
+                    lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес"
+                );
+                
+                await ctx.reply(
+                    lang === "UZB"
+                        ? "📍 Manzilingizni kiriting:"
+                        : "📍 Введите ваш адрес:",
+                    { reply_markup: addressKeyboard }
+                );
+                return true;
+
+            case "address":
+                if (userMessage === (lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес")) {
+                    complaintSteps[userId].step = "waitingAddress";
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "📍 Manzilingizni to'liq kiriting:"
+                            : "📍 Введите ваш полный адрес:"
+                    );
+                    return true;
+                }
+                return false;
+
+            case "waitingAddress":
+                if (sanitizedMessage.length < 5) {
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "❌ Manzil juda qisqa. Iltimos, to'liqroq kiriting."
+                            : "❌ Адрес слишком короткий. Пожалуйста, введите полнее."
+                    );
+                    return true;
+                }
+                complaintSteps[userId].data.address = sanitizedMessage;
+                complaintSteps[userId].step = "phone";
+                
+                const phoneKeyboard = createKeyboard(
+                    lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона"
+                );
+                
+                await ctx.reply(
+                    lang === "UZB"
+                        ? "📞 Telefon raqamingizni kiriting:\nMasalan: +998901234567"
+                        : "📞 Введите номер телефона:\nНапример: +998901234567",
+                    { reply_markup: phoneKeyboard }
+                );
+                return true;
+
+            case "phone":
+                if (!validatePhone(sanitizedMessage)) {
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "❌ Noto'g'ri telefon raqam. Masalan: +998901234567"
+                            : "❌ Неверный формат номера. Пример: +998901234567"
+                    );
+                    return true;
+                }
+                complaintSteps[userId].data.phone = sanitizedMessage;
+                complaintSteps[userId].step = "content";
+                await ctx.reply(
+                    lang === "UZB"
+                        ? "📝 Murojaatingiz matnini kiriting:"
+                        : "📝 Введите текст обращения:"
+                );
+                return true;
+
+            case "content":
+                if (!validateContent(sanitizedMessage)) {
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "❌ Murojaat matni noto'g'ri. 10-1000 belgi oralig'ida bo'lishi kerak."
+                            : "❌ Текст обращения неверен. Должен быть от 10 до 1000 символов."
+                    );
+                    return true;
+                }
+
+                complaintSteps[userId].data.content = sanitizedMessage;
+                await ctx.reply(
+                    lang === "UZB"
+                        ? "✅ Murojaatingiz muvaffaqiyatli qabul qilindi!"
+                        : "✅ Ваше обращение успешно принято!"
+                );
+                delete complaintSteps[userId];
+                return true;
+        }
+    } catch (error) {
+        console.error('Shikoyatni qayta ishlashda xatolik:', error);
+        await handleError(ctx, ctx.from.id);
         return false;
     }
+};
 
-    const { step, lang } = complaintSteps[userId];
+export const handleUserList = async (ctx, lang) => {
+    try {
+        const users = await User.find({})
+            .sort({ _id: -1 })  // eng oxirgi qo'shilganlar
+            .limit(10)          // oxirgi 10 ta
+            .select('username first_name last_name');  // faqat kerakli maydonlar
 
-    const createKeyboard = (buttonText) => {
-        return new Keyboard()
-            .text(buttonText)
-            .row()
-            .oneTime()
-            .resized();
-    };
-
-    switch (step) {
-        case "fullName":
-            if (userMessage === (lang === "UZB" ? "👤 F.I.SH. kiriting" : "👤 Ввести Ф.И.О.")) {
-                await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>👤 F.I.SH.ni to'liq kiriting:</b>"
-                        : "<b>👤 Введите Ф.И.О. полностью:</b>",
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingFullName";
-            }
-            break;
-
-        case "waitingFullName":
-            complaintSteps[userId].fullName = userMessage;
-            complaintSteps[userId].step = "address";
+        if (!users || users.length === 0) {
             await ctx.reply(
                 lang === "UZB"
-                    ? "<b>📍 Manzilingizni kiriting:</b>"
-                    : "<b>📍 Введите ваш адрес:</b>",
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: createKeyboard(
-                        lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес"
-                    )
-                }
+                    ? "❌ Hozircha foydalanuvchilar yo'q"
+                    : "❌ Пока нет пользователей"
             );
-            break;
+            return;
+        }
 
-        case "address":
-            if (userMessage === (lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес")) {
-                await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>📍 Manzilingizni yozing:</b>"
-                        : "<b>📍 Напишите ваш адрес:</b>",
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingAddress";
-            }
-            break;
+        const userList = users.map((user, index) => {
+            const username = user.username ? `@${user.username}` : 'username yo\'q';
+            const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'ism ko\'rsatilmagan';
+            return `${index + 1}. ${name} (${username})`;
+        }).join('\n');
 
-        case "waitingAddress":
-            complaintSteps[userId].address = userMessage;
-            complaintSteps[userId].step = "phone";
-            await ctx.reply(
-                lang === "UZB"
-                    ? "<b>📞 Telefon raqamingizni kiriting:</b>"
-                    : "<b>📞 Введите ваш номер телефона:</b>",
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: createKeyboard(
-                        lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона"
-                    )
-                }
-            );
-            break;
-
-        case "phone":
-            if (userMessage === (lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона")) {
-                await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>📞 Telefon raqamingizni yozing:</b>"
-                        : "<b>📞 Напишите ваш номер телефона:</b>",
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingPhone";
-            }
-            break;
-
-        case "waitingPhone":
-            complaintSteps[userId].phone = userMessage;
-            complaintSteps[userId].step = "content";
-            await ctx.reply(
-                lang === "UZB"
-                    ? "<b>📝 Murojaatingiz mazmunini kiriting:</b>"
-                    : "<b>📝 Введите содержание обращения:</b>",
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: createKeyboard(
-                        lang === "UZB" ? "📝 Murojaat matnini kiriting" : "📝 Ввести текст обращения"
-                    )
-                }
-            );
-            break;
-
-        case "content":
-            if (userMessage === (lang === "UZB" ? "📝 Murojaat matnini kiriting" : "📝 Ввести текст обращения")) {
-                await ctx.reply(
-                    lang === "UZB"
-                        ? "<b>📝 Murojaatingiz matnini yozing:</b>"
-                        : "<b>📝 Напишите текст вашего обращения:</b>",
-                    { parse_mode: "HTML" }
-                );
-                complaintSteps[userId].step = "waitingContent";
-            }
-            break;
-
-        case "waitingContent":
-            complaintSteps[userId].content = userMessage;
-            complaintSteps[userId].step = "confirm";
-
-            const confirmKeyboard = new Keyboard()
-                .text(lang === "UZB" ? "✅ Ha" : "✅ Да")
-                .text(lang === "UZB" ? "❌ Yo'q" : "❌ Нет")
-                .row()
-                .oneTime()
-                .resized();
-
-            await ctx.reply(
-                lang === "UZB"
-                    ? `<b>Shikoyat ma'lumotlari:</b>\n\n` +
-                      `👤 F.I.SH.: ${complaintSteps[userId].fullName}\n` +
-                      `📍 Manzil: ${complaintSteps[userId].address}\n` +
-                      `📞 Aloqa: ${complaintSteps[userId].phone}\n` +
-                      `📝 Murojaat mazmuni:\n${complaintSteps[userId].content}\n\n` +
-                      `<b>Ma'lumotlar to'g'rimi?</b>`
-                    : `<b>Данные жалобы:</b>\n\n` +
-                      `👤 Ф.И.О.: ${complaintSteps[userId].fullName}\n` +
-                      `📍 Адрес: ${complaintSteps[userId].address}\n` +
-                      `📞 Контакт: ${complaintSteps[userId].phone}\n` +
-                      `📝 Содержание обращения:\n${complaintSteps[userId].content}\n\n` +
-                      `<b>Данные верны?</b>`,
-                { 
-                    parse_mode: "HTML",
-                    reply_markup: confirmKeyboard 
-                }
-            );
-            break;
-
-        case "confirm":
-            if (userMessage === (lang === "UZB" ? "✅ Ha" : "✅ Да")) {
-                const adminMessage = 
-                    lang === "UZB"
-                        ? `<b>📨 Yangi murojaat:</b>\n\n` +
-                          `👤 F.I.SH.: ${complaintSteps[userId].fullName}\n` +
-                          `📍 Manzil: ${complaintSteps[userId].address}\n` +
-                          `📞 Aloqa: ${complaintSteps[userId].phone}\n` +
-                          `📝 Murojaat mazmuni:\n${complaintSteps[userId].content}`
-                        : `<b>📨 Новое обращение:</b>\n\n` +
-                          `👤 Ф.И.О.: ${complaintSteps[userId].fullName}\n` +
-                          `📍 Адрес: ${complaintSteps[userId].address}\n` +
-                          `📞 Контакт: ${complaintSteps[userId].phone}\n` +
-                          `📝 Содержание обращения:\n${complaintSteps[userId].content}`;
-
-                await ctx.api.sendMessage(process.env.ADMIN_ID, adminMessage, { parse_mode: "HTML" });
-                await requestsSection(ctx, lang);
-
-                const user = await User.findOne({ user_id: userId });
-                user.state = null;
-                await user.save();
-            } else {
-                await requestsSection(ctx, lang);
-            }
-            delete complaintSteps[userId];
-            break;
+        await ctx.reply(
+            lang === "UZB"
+                ? `📊 Oxirgi 10 ta foydalanuvchi:\n\n${userList}`
+                : `📊 Последние 10 пользователей:\n\n${userList}`
+        );
+    } catch (error) {
+        console.error('Foydalanuvchilar ro\'yxatini olishda xatolik:', error);
+        await ctx.reply(
+            lang === "UZB"
+                ? "❌ Xatolik yuz berdi. Iltimos, qayta urinib ko'ring."
+                : "❌ Произошла ошибка. Пожалуйста, попробуйте снова."
+        );
     }
-
-    return true;
 };
