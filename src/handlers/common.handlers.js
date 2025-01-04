@@ -575,6 +575,18 @@ export const handleComplaintMessage = async (ctx) => {
                 return true;
 
             case "phone":
+                if (userMessage === (lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона")) {
+                    complaintSteps[userId].step = "waitingPhone";
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "📞 Telefon raqamingizni kiriting:\nMasalan: +998901234567"
+                            : "📞 Введите номер телефона:\nНапример: +998901234567"
+                    );
+                    return true;
+                }
+                return false;
+
+            case "waitingPhone":
                 if (!validatePhone(sanitizedMessage)) {
                     await ctx.reply(
                         lang === "UZB"
@@ -585,6 +597,7 @@ export const handleComplaintMessage = async (ctx) => {
                 }
                 complaintSteps[userId].data.phone = sanitizedMessage;
                 complaintSteps[userId].step = "content";
+                
                 await ctx.reply(
                     lang === "UZB"
                         ? "📝 Murojaatingiz matnini kiriting:"
@@ -596,21 +609,50 @@ export const handleComplaintMessage = async (ctx) => {
                 if (!validateContent(sanitizedMessage)) {
                     await ctx.reply(
                         lang === "UZB"
-                            ? "❌ Murojaat matni noto'g'ri. 10-1000 belgi oralig'ida bo'lishi kerak."
-                            : "❌ Текст обращения неверен. Должен быть от 10 до 1000 символов."
+                            ? "❌ Murojaat matni juda qisqa yoki uzun. 10-1000 belgi oralig'ida bo'lishi kerak."
+                            : "❌ Текст обращения слишком короткий или длинный. Должен быть от 10 до 1000 символов."
                     );
                     return true;
                 }
-
                 complaintSteps[userId].data.content = sanitizedMessage;
-                await ctx.reply(
-                    lang === "UZB"
-                        ? "✅ Murojaatingiz muvaffaqiyatli qabul qilindi!"
-                        : "✅ Ваше обращение успешно принято!"
-                );
+                complaintSteps[userId].data.date = new Date().toISOString();
+
+                try {
+                    const adminMessage = lang === "UZB"
+                        ? `<b>📨 Yangi murojaat:</b>\n\n` +
+                          `👤 F.I.SH.: ${complaintSteps[userId].data.fullName}\n` +
+                          `📍 Manzil: ${complaintSteps[userId].data.address}\n` +
+                          `📞 Telefon: ${complaintSteps[userId].data.phone}\n` +
+                          `📝 Matn: ${complaintSteps[userId].data.content}\n` +
+                          `📅 Sana: ${new Date(complaintSteps[userId].data.date).toLocaleString('uz-UZ')}`
+                        : `<b>📨 Новое обращение:</b>\n\n` +
+                          `👤 Ф.И.О.: ${complaintSteps[userId].data.fullName}\n` +
+                          `📍 Адрес: ${complaintSteps[userId].data.address}\n` +
+                          `📞 Телефон: ${complaintSteps[userId].data.phone}\n` +
+                          `📝 Текст: ${complaintSteps[userId].data.content}\n` +
+                          `📅 Дата: ${new Date(complaintSteps[userId].data.date).toLocaleString('ru-RU')}`;
+
+                    // Guruhga yuborish
+                    await ctx.api.sendMessage(process.env.ADMIN_GROUP_ID, adminMessage, { parse_mode: "HTML" });
+                    
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "✅ Murojaatingiz muvaffaqiyatli yuborildi. Tez orada ko'rib chiqiladi."
+                            : "✅ Ваше обращение успешно отправлено. Оно будет рассмотрено в ближайшее время."
+                    );
+                } catch (error) {
+                    console.error('Admin guruhiga yuborishda xatolik:', error);
+                    await ctx.reply(
+                        lang === "UZB"
+                            ? "❌ Texnik nosozlik. Ma'muriyatga murojaat qiling."
+                            : "❌ Техническая неполадка. Обратитесь к администрации."
+                    );
+                }
+
                 delete complaintSteps[userId];
                 return true;
         }
+        return true;
     } catch (error) {
         console.error('Shikoyatni qayta ishlashda xatolik:', error);
         await handleError(ctx, ctx.from.id);
