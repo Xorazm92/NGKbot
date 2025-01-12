@@ -12,16 +12,33 @@ export const client = new TelegramClient(stringSession, apiId, apiHash, {
     connectionRetries: 5,
 });
 
-// Kanaldan xabarlarni olish
-client.getHistory = async (channelUsername, options = { limit: 1 }) => {
+// Connect the client
+export const connectClient = async () => {
     try {
         if (!client.connected) {
             await client.connect();
+            console.log("Telegram client connected successfully");
         }
+    } catch (error) {
+        console.error("Error connecting to Telegram:", error);
+        throw error;
+    }
+};
+
+// Kanaldan xabarlarni olish
+export const getHistory = async (channelUsername, options = { limit: 1 }) => {
+    try {
+        // Ensure client is connected
+        await connectClient();
+        
         const channel = await client.getEntity(channelUsername);
-        return await client.getMessages(channel, options);
+        const messages = await client.getMessages(channel, {
+            limit: options.limit
+        });
+        
+        return messages;
     } catch (error) {
         console.error("Error getting messages:", error);
-        return [];
+        throw error;
     }
 };

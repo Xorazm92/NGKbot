@@ -1,0 +1,83 @@
+name: NGKbot CI/CD to Google Cloud
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: asia-east1
+  REGISTRY: gcr.io
+  IMAGE: ngk-bot
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        DATABASE_URI: mongodb://localhost:27017/telegram-bot
+        ADMIN_ID: ${{ secrets.ADMIN_ID }}
+        ADMIN_GROUP_ID: ${{ secrets.ADMIN_GROUP_ID }}
+        IMAGEKIT_PUBLIC_KEY: ${{ secrets.IMAGEKIT_PUBLIC_KEY }}
+        IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
+        IMAGEKIT_URL_ENDPOINT: ${{ secrets.IMAGEKIT_URL_ENDPOINT }}
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Configure Docker for GCP
+      run: gcloud auth configure-docker ${{ env.REGISTRY }}
+
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }} .
+        docker tag ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
+
+    - name: Push Docker image
+      run: |
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }}
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
+
+    - name: Deploy to Cloud Run
+      uses: google-github-actions/deploy-cloudrun@v1
+      with:
+        service: ngk-bot
+        region: ${{ env.GCP_REGION }}
+        image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }}
+        env_vars: |
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          DATABASE_URI=${{ secrets.DATABASE_URI }}
+          ADMIN_ID=${{ secrets.ADMIN_ID }}
+          ADMIN_GROUP_ID=${{ secrets.ADMIN_GROUP_ID }}
+          IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }}
+          IMAGEKIT_PRIVATE_KEY=${{ secrets.IMAGEKIT_PRIVATE_KEY }}
+          IMAGEKIT_URL_ENDPOINT=${{ secrets.IMAGEKIT_URL_ENDPOINT }}

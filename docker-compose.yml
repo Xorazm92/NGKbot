@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    restart: always
+    ports:
+      - "5016:5016"
+    environment:
+      - NODE_ENV=production
+      - PORT=5016
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DATABASE_URI=${DATABASE_URI}
+      - ADMIN_ID=${ADMIN_ID}
+      - ADMIN_GROUP_ID=${ADMIN_GROUP_ID}
+      - IMAGEKIT_PUBLIC_KEY=${IMAGEKIT_PUBLIC_KEY}
+      - IMAGEKIT_PRIVATE_KEY=${IMAGEKIT_PRIVATE_KEY}
+      - IMAGEKIT_URL_ENDPOINT=${IMAGEKIT_URL_ENDPOINT}
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:6.0
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

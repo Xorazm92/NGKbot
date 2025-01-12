@@ -1,16 +1,14 @@
+import bot from "../config/bot.js";
 import User from "../models/user.js";
-import bot from '../config/bot.js'
+import { saveLang, selectLang } from "./lang.handler.js";
 import axios from 'axios';
 import fs from 'fs';
-import { client } from '../config/telegram.client.mjs';
 import { 
     sendHomeMenu, 
-    saveLang,
     userSection,
     requestsSection,
     literatureSection,
-    messagesSection,
-    selectLang
+    messagesSection
 } from './menu.handlers.js';
 import { Keyboard } from "grammy";
 import { 
@@ -21,6 +19,7 @@ import {
     sanitizeInput,
     isSessionExpired 
 } from "../validates/complainValidate.js";
+import { regions } from '../data/regions.js';
 
 const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 daqiqa
 export const complaintSteps = {};
@@ -274,67 +273,31 @@ export const handleCallCenter = async (ctx, lang) => {
 // Yangi xabarlarni olish uchun handler
 export const handleNewMessages = async (ctx, lang) => {
     try {
-        // Kanaldan xabar olish
-        const messages = await client.getHistory("@uzrailways_uz", { limit: 1 });
-
-        if (messages && messages.length > 0) {
-            const lastMessage = messages[0];
-
-            // Xabar matnini olish
-            const messageText = lastMessage.text || lastMessage.message || "";
-            const messageDate = new Date(lastMessage.date * 1000).toLocaleString();
-
-            // Xabarni formatlash
-            const formattedMessage = `📢 Yangi xabar:\n\n${messageText}\n\n📅 Sana: ${messageDate}`;
-
-            // Xabarni yuborish
-            await ctx.reply(formattedMessage, {
-                parse_mode: "HTML",
-                disable_web_page_preview: false
-            });
-
-            // Agar media bo'lsa, uni ham yuborish
-            if (lastMessage.media) {
-                try {
-                    const buffer = await client.downloadMedia(lastMessage.media);
-                    if (buffer) {
-                        // Media turini aniqlash
-                        let method = ctx.replyWithDocument;
-                        let filename = 'media';
-                        
-                        if (lastMessage.media.photo) {
-                            method = ctx.replyWithPhoto;
-                            filename += '.jpg';
-                        } else if (lastMessage.media.document) {
-                            method = ctx.replyWithDocument;
-                            filename = lastMessage.media.document.attributes?.[0]?.fileName || 'document';
-                        } else if (lastMessage.media.video) {
-                            method = ctx.replyWithVideo;
-                            filename += '.mp4';
-                        }
-
-                        // Media faylni yuborish
-                        await method({
-                            source: buffer,
-                            filename: filename
-                        });
-                    }
-                } catch (mediaError) {
-                    console.error("Error sending media:", mediaError);
+        // Get channel info
+        const channelInfo = await ctx.api.getChat("@uzrailways_uz");
+        
+        // Try to get the last message from the channel
+        try {
+            const message = await ctx.api.copyMessage(
+                ctx.chat.id,
+                "@uzrailways_uz",
+                channelInfo.pinned_message?.message_id || 1,
+                {
+                    parse_mode: "HTML"
                 }
-            }
+            );
 
-            // Tasdiqlash xabari
             await ctx.reply(
                 lang === "UZB"
                     ? "✅ Oxirgi xabar yuborildi"
                     : "✅ Последнее сообщение отправлено"
             );
-        } else {
+        } catch (error) {
+            console.error("Error copying message:", error);
             await ctx.reply(
                 lang === "UZB"
-                    ? "❌ Kanalda xabarlar mavjud emas"
-                    : "❌ В канале нет сообщений"
+                    ? "Kechirasiz, xabarni olishda muammo yuzaga keldi. Iltimos, to'g'ridan-to'g'ri kanalga tashrif buyuring: @uzrailways_uz"
+                    : "Извините, возникла проблема при получении сообщения. Пожалуйста, посетите канал напрямую: @uzrailways_uz"
             );
         }
     } catch (error) {
@@ -399,14 +362,16 @@ export const handleMenu = async (ctx, lang) => {
         console.log('Menyu bo\'limi tanlandi');
         const message = ctx.message.text;
         
-        if (message === "👥 Foydalanuvchilar" || message === "👥 Пользователи") {
+        if (message === "🧑🏾‍🤝‍🧑🏾 Foydalanuvchilar" || message === "🧑🏾‍🤝‍🧑🏾 Пользователи") {
             await userSection(ctx, lang);
-        } else if (message === "📝 Murojaatlar" || message === "📝 Обращения") {
+        } else if (message === "🪧 Murojaatlar" || message === "🪧 Запросы") {
             await requestsSection(ctx, lang);
-        } else if (message === "📚 Adabiyotlar" || message === "📚 Литература") {
+        } else if (message === "🗃️ Adabiyotlar" || message === "🗃 Литература") {
             await literatureSection(ctx, lang);
-        } else if (message === "📨 Xabarlar" || message === "📨 Сообщения") {
+        } else if (message === "📣 Xabarlar" || message === "📣 Объявления") {
             await messagesSection(ctx, lang);
+        } else if (message === "♻️ Tilni o'zgartirish" || message === "♻️ Изменить язык") {
+            await selectLang(ctx);
         }
     } catch (error) {
         console.error('Menyu bo\'limini tanlashda xatolik:', error);
@@ -523,68 +488,83 @@ export const handleComplaintMessage = async (ctx) => {
                     );
                     return true;
                 }
+
                 complaintSteps[userId].data.fullName = sanitizedMessage;
                 complaintSteps[userId].step = "address";
                 
-                const addressKeyboard = createKeyboard(
-                    lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес"
-                );
+                const addressKeyboard = new Keyboard()
+                    .oneTime()
+                    .resized();
                 
+                // Viloyatlarni 2 tadan qilib joylashtirish
+                Object.keys(regions).forEach((region, index) => {
+                    if (index % 2 === 0) {
+                        addressKeyboard.row();
+                    }
+                    addressKeyboard.text(region);
+                });
+
                 await ctx.reply(
                     lang === "UZB"
-                        ? "📍 Manzilingizni kiriting:"
-                        : "📍 Введите ваш адрес:",
+                        ? "📍 Viloyatingizni tanlang:"
+                        : "📍 Выберите вашу область:",
                     { reply_markup: addressKeyboard }
                 );
                 return true;
 
             case "address":
-                if (userMessage === (lang === "UZB" ? "📍 Manzil kiriting" : "📍 Ввести адрес")) {
-                    complaintSteps[userId].step = "waitingAddress";
+                if (!regions[userMessage]) {
                     await ctx.reply(
                         lang === "UZB"
-                            ? "📍 Manzilingizni to'liq kiriting:"
-                            : "📍 Введите ваш полный адрес:"
+                            ? "❌ Iltimos, viloyatni ro'yxatdan tanlang"
+                            : "❌ Пожалуйста, выберите область из списка"
                     );
                     return true;
                 }
-                return false;
 
-            case "waitingAddress":
-                if (sanitizedMessage.length < 5) {
+                complaintSteps[userId].data.selectedRegion = userMessage;
+                complaintSteps[userId].step = "waitingDistrict";
+
+                // Tumanlar tugmalarini yaratish
+                const districtKeyboard = new Keyboard()
+                    .oneTime()
+                    .resized();
+                
+                regions[userMessage].forEach((district, index) => {
+                    if (index % 2 === 0) {
+                        districtKeyboard.row();
+                    }
+                    districtKeyboard.text(district);
+                });
+
+                await ctx.reply(
+                    lang === "UZB"
+                        ? "📍 Tumaningizni tanlang:"
+                        : "📍 Выберите ваш район:",
+                    { reply_markup: districtKeyboard }
+                );
+                return true;
+
+            case "waitingDistrict":
+                const selectedRegion = complaintSteps[userId].data.selectedRegion;
+                if (!regions[selectedRegion].includes(userMessage)) {
                     await ctx.reply(
                         lang === "UZB"
-                            ? "❌ Manzil juda qisqa. Iltimos, to'liqroq kiriting."
-                            : "❌ Адрес слишком короткий. Пожалуйста, введите полнее."
+                            ? "❌ Iltimos, tumanni ro'yxatdan tanlang"
+                            : "❌ Пожалуйста, выберите район из списка"
                     );
                     return true;
                 }
-                complaintSteps[userId].data.address = sanitizedMessage;
-                complaintSteps[userId].step = "phone";
-                
-                const phoneKeyboard = createKeyboard(
-                    lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона"
-                );
+
+                complaintSteps[userId].data.address = `${selectedRegion}, ${userMessage}`;
+                complaintSteps[userId].step = "waitingPhone";
                 
                 await ctx.reply(
                     lang === "UZB"
                         ? "📞 Telefon raqamingizni kiriting:\nMasalan: +998901234567"
-                        : "📞 Введите номер телефона:\nНапример: +998901234567",
-                    { reply_markup: phoneKeyboard }
+                        : "📞 Введите номер телефона:\nНапример: +998901234567"
                 );
                 return true;
-
-            case "phone":
-                if (userMessage === (lang === "UZB" ? "📞 Telefon raqam kiriting" : "📞 Ввести номер телефона")) {
-                    complaintSteps[userId].step = "waitingPhone";
-                    await ctx.reply(
-                        lang === "UZB"
-                            ? "📞 Telefon raqamingizni kiriting:\nMasalan: +998901234567"
-                            : "📞 Введите номер телефона:\nНапример: +998901234567"
-                    );
-                    return true;
-                }
-                return false;
 
             case "waitingPhone":
                 if (!validatePhone(sanitizedMessage)) {
@@ -622,13 +602,13 @@ export const handleComplaintMessage = async (ctx) => {
                         ? `<b>📨 Yangi murojaat:</b>\n\n` +
                           `👤 F.I.SH.: ${complaintSteps[userId].data.fullName}\n` +
                           `📍 Manzil: ${complaintSteps[userId].data.address}\n` +
-                          `📞 Telefon: ${complaintSteps[userId].data.phone}\n` +
+                          `📞 Telefon raqam: ${complaintSteps[userId].data.phone}\n` +
                           `📝 Matn: ${complaintSteps[userId].data.content}\n` +
                           `📅 Sana: ${new Date(complaintSteps[userId].data.date).toLocaleString('uz-UZ')}`
                         : `<b>📨 Новое обращение:</b>\n\n` +
                           `👤 Ф.И.О.: ${complaintSteps[userId].data.fullName}\n` +
                           `📍 Адрес: ${complaintSteps[userId].data.address}\n` +
-                          `📞 Телефон: ${complaintSteps[userId].data.phone}\n` +
+                          `📞 Номер телефона: ${complaintSteps[userId].data.phone}\n` +
                           `📝 Текст: ${complaintSteps[userId].data.content}\n` +
                           `📅 Дата: ${new Date(complaintSteps[userId].data.date).toLocaleString('ru-RU')}`;
 
@@ -659,7 +639,6 @@ export const handleComplaintMessage = async (ctx) => {
         return false;
     }
 };
-
 export const handleUserList = async (ctx, lang) => {
     try {
         const users = await User.find({})
