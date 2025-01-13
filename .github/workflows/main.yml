@@ -7,36 +7,39 @@ on:
     branches: [ main ]
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: angelic-turbine-446309-g6
   GCP_REGION: asia-east1
   REGISTRY: gcr.io
   IMAGE: ngk-bot
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        export_default_credentials: true
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Configure Docker for GCP
-      run: gcloud auth configure-docker ${{ env.REGISTRY }}
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
+
+    - name: 'Use gcloud CLI'
+      run: 'gcloud info'
+
+    - name: Configure Docker
+      run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
 
     - name: Build Docker image
       run: |
-        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }} .
-        docker tag ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
+        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest .
 
     - name: Push Docker image
       run: |
-        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }}
         docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
 
     - name: Deploy to Cloud Run
@@ -44,7 +47,7 @@ jobs:
       with:
         service: ngk-bot
         region: ${{ env.GCP_REGION }}
-        image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }}
+        image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
         env_vars: |
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
           DATABASE_URI=mongodb://mongo:27017/NGK_uchun
