@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ngk-bot
+spec:
+  selector:
+    app: ngk-bot
+  ports:
+  - port: 5016
+    targetPort: 5016
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngk-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ngk-bot
+  template:
+    metadata:
+      labels:
+        app: ngk-bot
+    spec:
+      containers:
+      - name: ngk-bot
+        image: gcr.io/PROJECT_ID/ngk-bot:latest
+        ports:
+        - containerPort: 5016
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "5016"
+        - name: BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: BOT_TOKEN
+        - name: DATABASE_URI
+          value: "mongodb://mongo:27017/NGK_uchun"
+        - name: ADMIN_ID
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: ADMIN_ID
+        - name: ADMIN_GROUP_ID
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: ADMIN_GROUP_ID
+        - name: IMAGEKIT_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: IMAGEKIT_PUBLIC_KEY
+        - name: IMAGEKIT_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: IMAGEKIT_PRIVATE_KEY
+        - name: IMAGEKIT_URL_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: IMAGEKIT_URL_ENDPOINT
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  serviceName: mongo
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:6.0
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongo-data
+          mountPath: /data/db
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  selector:
+    app: mongo
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None
