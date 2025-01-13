@@ -16,19 +16,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up SSH key and Password
+      - name: Set up SSH key
         run: |
           env
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-          sudo apt-get install -y sshpass
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p 22 ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+          sudo apt-get install sshpass
 
 
       - name: Deploy to server
         run: |
-          sshpass -p "zufar1992" ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
+          ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
           cd ${{ secrets.APP_PATH }}
           git pull
           npm i --force
           npm run prod
           ENDSSH
+      
