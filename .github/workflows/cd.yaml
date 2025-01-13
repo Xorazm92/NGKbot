@@ -28,7 +28,7 @@ jobs:
               run: |
                   ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
                   cd ${{ secrets.APP_PATH }}
-                  git pull
+                  git pull origin main 
                   npx pnpm install
                   npx pm2 restart ngk_uchun
                   ENDSSH
