@@ -16,14 +16,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up SSH key
+      - name: Set up SSH connection with password
         run: |
           env
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 22 ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-          sudo apt-get install sshpass
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+          sshpass -p "${{ secrets.PASSWORD }}" ssh -o StrictHostKeyChecking=no username@${{ secrets.HOST }} << EOF
+          echo "Successfully connected to the server!"
+          EOF
 
       - name: Deploy to server
         run: |
