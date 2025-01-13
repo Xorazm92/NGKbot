@@ -27,9 +27,10 @@ jobs:
             - name: Deploy to server
               run: |
                   ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
+                  git config pull.rebase false
                   cd ${{ secrets.APP_PATH }}
                   git pull origin main 
-                  npx pnpm install
+                  npx pnpm i
                   npx pm2 restart ngk_uchun
                   ENDSSH
                 
