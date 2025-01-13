@@ -9,7 +9,9 @@
     "dev": "nodemon index.js",
     "test": "jest",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "prod": "npx pm2 restart "
+
   },
   "dependencies": {
     "dotenv": "^16.0.0",

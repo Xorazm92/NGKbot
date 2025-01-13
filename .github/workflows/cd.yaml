@@ -29,6 +29,6 @@ jobs:
                   ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
                   cd ${{ secrets.APP_PATH }}
                   git pull
-                  npm install
+                  npx pnpm install
                   npm run prod
                   ENDSSH
