@@ -26,10 +26,9 @@ jobs:
 
       - name: Deploy to server
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
+          sshpass -p "zufar1992" ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
           cd ${{ secrets.APP_PATH }}
           git pull
           npm i --force
           npm run prod
           ENDSSH
-          
