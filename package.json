@@ -10,7 +10,7 @@
     "test": "jest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prod": "npx pm2 restart "
+    "prod": "npx pm2 restart ngk_uchun"
 
   },
   "dependencies": {
