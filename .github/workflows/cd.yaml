@@ -1,122 +1,34 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
-name: Deploy to Google Cloud
+name: Node.js CD
 
 on:
-  push:
-    branches: [ "main" ]
-
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
-  GKE_ZONE: ${{ secrets.GKE_ZONE }}
-  DEPLOYMENT_NAME: ngk-bot
-  IMAGE: ngk-bot
+    push:
+        branches: ["main"]
+    pull_request:
+        branches: ["main"]
 
 jobs:
-  deploy:
-    name: Setup, Build, and Deploy
-    runs-on: ubuntu-latest
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+            - name: Set up SSH key
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+                  chmod 600 ~/.ssh/id_rsa
+                  ssh-keyscan -p 22 ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+                  sudo apt-get install sshpass
 
-    - name: Setup Google Cloud CLI
-      uses: google-github-actions/setup-gcloud@v0
-      with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
-        export_default_credentials: true
-
-    - name: Configure Docker
-      run: |
-        gcloud auth configure-docker
-
-    - name: Get GKE credentials
-      uses: google-github-actions/get-gke-credentials@v0
-      with:
-        cluster_name: ${{ secrets.GKE_CLUSTER }}
-        location: ${{ secrets.GKE_ZONE }}
-        credentials: ${{ secrets.GCP_SA_KEY }}
-
-    - name: Build Docker image
-      run: |
-        docker build -t gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA .
-
-    - name: Push Docker image to Google Container Registry
-      run: |
-        docker push gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA
-
-    - name: Set up Kustomize
-      run: |
-        curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
-        chmod u+x ./kustomize
-
-    - name: Deploy to GKE
-      run: |
-        # Create deployment yaml
-        cat <<EOF > deployment.yaml
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: $DEPLOYMENT_NAME
-        spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              app: $DEPLOYMENT_NAME
-          template:
-            metadata:
-              labels:
-                app: $DEPLOYMENT_NAME
-            spec:
-              containers:
-              - name: $DEPLOYMENT_NAME
-                image: gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA
-                ports:
-                - containerPort: 5016
-                env:
-                - name: NODE_ENV
-                  value: "production"
-                - name: PORT
-                  value: "5016"
-                - name: BOT_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: bot-secrets
-                      key: BOT_TOKEN
-                - name: DATABASE_URI
-                  value: "mongodb://mongo:27017/NGK_uchun"
-                - name: ADMIN_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: bot-secrets
-                      key: ADMIN_ID
-                - name: ADMIN_GROUP_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: bot-secrets
-                      key: ADMIN_GROUP_ID
-                - name: IMAGEKIT_PUBLIC_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: bot-secrets
-                      key: IMAGEKIT_PUBLIC_KEY
-                - name: IMAGEKIT_PRIVATE_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: bot-secrets
-                      key: IMAGEKIT_PRIVATE_KEY
-                - name: IMAGEKIT_URL_ENDPOINT
-                  valueFrom:
-                    secretKeyRef:
-                      name: bot-secrets
-                      key: IMAGEKIT_URL_ENDPOINT
-        EOF
-
-        # Deploy the application
-        kubectl apply -f deployment.yaml
-        kubectl rollout status deployment/$DEPLOYMENT_NAME
-        kubectl get services -o wide
+            - name: Deploy to server
+              run: |
+                  ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
+                  cd ${{ secrets.APP_PATH }}
+                  git pull
+                  npm install
+                  npm run prod
+                  ENDSSH
