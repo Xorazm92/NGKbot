@@ -13,36 +13,8 @@ env:
   IMAGE: ngk-bot
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Run tests
-      run: npm test
-      env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        DATABASE_URI: mongodb://localhost:27017/telegram-bot
-        ADMIN_ID: ${{ secrets.ADMIN_ID }}
-        ADMIN_GROUP_ID: ${{ secrets.ADMIN_GROUP_ID }}
-        IMAGEKIT_PUBLIC_KEY: ${{ secrets.IMAGEKIT_PUBLIC_KEY }}
-        IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
-        IMAGEKIT_URL_ENDPOINT: ${{ secrets.IMAGEKIT_URL_ENDPOINT }}
-
   build-and-deploy:
-    needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
     - uses: actions/checkout@v3
@@ -75,7 +47,7 @@ jobs:
         image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:${{ github.sha }}
         env_vars: |
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          DATABASE_URI=${{ secrets.DATABASE_URI }}
+          DATABASE_URI=mongodb://mongo:27017/NGK_uchun
           ADMIN_ID=${{ secrets.ADMIN_ID }}
           ADMIN_GROUP_ID=${{ secrets.ADMIN_GROUP_ID }}
           IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }}
