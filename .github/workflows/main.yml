@@ -1,58 +1,53 @@
-name: NGKbot CI/CD to Google Cloud
+name: Deploy to Google Cloud Run
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 env:
   PROJECT_ID: angelic-turbine-446309-g6
-  GCP_REGION: asia-east1
-  REGISTRY: gcr.io
-  IMAGE: ngk-bot
+  REGION: asia-east1
+  SERVICE: ngk-bot
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - id: 'auth'
-      name: 'Authenticate to Google Cloud'
       uses: 'google-github-actions/auth@v1'
       with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+        workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+        service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
 
-    - name: 'Set up Cloud SDK'
-      uses: 'google-github-actions/setup-gcloud@v1'
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
 
-    - name: 'Use gcloud CLI'
-      run: 'gcloud info'
+    - name: Authorize Docker push
+      run: gcloud auth configure-docker
 
-    - name: Configure Docker
-      run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
-
-    - name: Build Docker image
-      run: |
-        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest .
-
-    - name: Push Docker image
-      run: |
-        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
+    - name: Build and Push Container
+      run: |-
+        docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} .
+        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
 
     - name: Deploy to Cloud Run
-      uses: google-github-actions/deploy-cloudrun@v1
-      with:
-        service: ngk-bot
-        region: ${{ env.GCP_REGION }}
-        image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE }}:latest
-        env_vars: |
-          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          DATABASE_URI=mongodb://mongo:27017/NGK_uchun
-          ADMIN_ID=${{ secrets.ADMIN_ID }}
-          ADMIN_GROUP_ID=${{ secrets.ADMIN_GROUP_ID }}
-          IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }}
-          IMAGEKIT_PRIVATE_KEY=${{ secrets.IMAGEKIT_PRIVATE_KEY }}
-          IMAGEKIT_URL_ENDPOINT=${{ secrets.IMAGEKIT_URL_ENDPOINT }}
+      run: |-
+        gcloud run deploy ${{ env.SERVICE }} \
+          --region ${{ env.REGION }} \
+          --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" \
+          --set-env-vars "DATABASE_URI=mongodb://mongo:27017/NGK_uchun" \
+          --set-env-vars "ADMIN_ID=${{ secrets.ADMIN_ID }}" \
+          --set-env-vars "ADMIN_GROUP_ID=${{ secrets.ADMIN_GROUP_ID }}" \
+          --set-env-vars "IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }}" \
+          --set-env-vars "IMAGEKIT_PRIVATE_KEY=${{ secrets.IMAGEKIT_PRIVATE_KEY }}" \
+          --set-env-vars "IMAGEKIT_URL_ENDPOINT=${{ secrets.IMAGEKIT_URL_ENDPOINT }}"
