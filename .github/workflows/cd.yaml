@@ -32,3 +32,4 @@ jobs:
           npm i --force
           npm run prod
           ENDSSH
+          
