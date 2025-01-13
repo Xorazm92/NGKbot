@@ -20,11 +20,11 @@ jobs:
         run: |
           env
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 22 ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-          sudo apt-get install sshpass
-          
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/my_private_key
+          chmod 600 ~/.ssh/my_private_key
+          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+          sudo apt-get install -y sshpass
+
 
 
       - name: Deploy to server
