@@ -10,7 +10,7 @@ services:
       - NODE_ENV=production
       - PORT=5016
       - BOT_TOKEN=${BOT_TOKEN}
-      - DATABASE_URI=${DATABASE_URI}
+      - DATABASE_URI=mongodb://mongo:27017/NGK_uchun
       - ADMIN_ID=${ADMIN_ID}
       - ADMIN_GROUP_ID=${ADMIN_GROUP_ID}
       - IMAGEKIT_PUBLIC_KEY=${IMAGEKIT_PUBLIC_KEY}
@@ -18,6 +18,8 @@ services:
       - IMAGEKIT_URL_ENDPOINT=${IMAGEKIT_URL_ENDPOINT}
     depends_on:
       - mongo
+    networks:
+      - bot_network
 
   mongo:
     image: mongo:6.0
@@ -26,6 +28,12 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - bot_network
 
 volumes:
   mongodb_data:
+
+networks:
+  bot_network:
+    driver: bridge
