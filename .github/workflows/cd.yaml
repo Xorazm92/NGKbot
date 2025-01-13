@@ -5,33 +5,49 @@ name: Node.js CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Step to checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step to set up SSH key for authentication
       - name: Set up SSH key
         run: |
-          env
+          # Create .ssh directory if it doesn't exist
           mkdir -p ~/.ssh
+          
+          # Save SSH private key to the file and set appropriate permissions
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 22 ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-          sudo apt-get install sshpass
+          
+          # Add the server's SSH fingerprint to known_hosts to avoid the interactive prompt
+          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+          
+          # Install sshpass to allow password-based authentication (if needed)
+          sudo apt-get update
+          sudo apt-get install -y sshpass
 
-
+      # Step to deploy to the server
       - name: Deploy to server
         run: |
-          ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} <<'ENDSSH'
-          cd ${{ secrets.APP_PATH }}
-          git pull
-          npm i --force
-          npm run prod
+          # Connect to the server and perform deployment steps
+          ssh -v -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} << 'ENDSSH'
+            # Navigate to the app directory
+            cd ${{ secrets.APP_PATH }}
+            
+            # Pull the latest changes from the repository
+            git pull
+            
+            # Install dependencies forcefully to ensure no outdated dependencies
+            npm install --force
+            
+            # Run production build
+            npm run prod
           ENDSSH
-      
