@@ -32,3 +32,4 @@ jobs:
                   npx pnpm install
                   npx pm2 restart ngk_uchun
                   ENDSSH
+                

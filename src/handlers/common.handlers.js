@@ -205,7 +205,7 @@ export const handleRequiredDocuments = async (ctx, lang) => {
             {
                 filename: "Ish_yuritish.pdf",
                 url: `${process.env.IMAGEKIT_URL_ENDPOINT}/kerakli_hujjatlar/Ish_yuritish.pdf`,
-                description: "Davlat tilida ish yuritish(Amaliy qo'llanma)"
+                description: "Davlat tilida ish yuritish to'g'risida (Amaliy qo'llanma)"
             }
         ];
 
