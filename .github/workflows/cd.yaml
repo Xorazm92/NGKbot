@@ -23,6 +23,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           if_key_exists: replace
 
+          
       - name: Adding Known Hosts
         run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
