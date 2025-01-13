@@ -19,10 +19,14 @@ jobs:
       - name: Set up SSH connection with password
         run: |
           env
-          sudo apt-get update
+          echo "Installing sshpass..."
           sudo apt-get install -y sshpass
+
+          echo "Connecting to the server..."
           sshpass -p "${{ secrets.PASSWORD }}" ssh -o StrictHostKeyChecking=no username@${{ secrets.HOST }} << EOF
           echo "Successfully connected to the server!"
+          sudo apt-get update -y
+          echo "Server packages updated successfully!"
           EOF
 
       - name: Deploy to server
